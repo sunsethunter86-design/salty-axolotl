@@ -1,0 +1,56 @@
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+credentials*.json
+secrets/
+auth.json
+.npmrc
+.pypirc
+
+# Dependencies
+node_modules/
+.pnpm-store/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Builds and caches
+dist/
+build/
+out/
+.next/
+.vite/
+.cache/
+.parcel-cache/
+coverage/
+*.tsbuildinfo
+
+# Large or generated media and model files (keep source art in assets/ small; large binaries go elsewhere)
+*.gguf
+*.safetensors
+*.litertlm
+*.onnx
+*.bin
+hf-cache/
+models/
+recordings/
+tts-cache/
+
+# Logs
+*.log
+logs/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
