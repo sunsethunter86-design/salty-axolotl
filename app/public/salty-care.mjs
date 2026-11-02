@@ -65,6 +65,27 @@ export function feed(care, now = Date.now()) {
   return { care: { ...care, lastFedAt: now, lastSeenAt: now, feeds: [...recent, now] }, result: "fed" };
 }
 
+// ---- she speaks first (2 Nov): when he comes back after a while, she greets him before he says a word ----
+
+export const GREET_AFTER_MS = 2 * HOUR;
+export const GREET_GAP_MIN_MS = 30 * 60e3;   // never two greetings within half an hour
+
+/** Whether she should greet him now: he's been gone long enough and she hasn't just greeted him. */
+export function shouldGreet({ gapMs, now = Date.now(), lastGreetAt = 0 } = {}) {
+  return gapMs >= GREET_AFTER_MS && now - (lastGreetAt || 0) >= GREET_GAP_MIN_MS;
+}
+
+/**
+ * The stage cue the tank sends in his place. It goes through Veridity's normal turn, so her engine
+ * treats it like any turn; the tank keeps it out of captions, memory and moods. Her care note (how
+ * long he was gone, whether she's hungry) rides on it as usual.
+ */
+export function greetingCue({ remembersSomething = false } = {}) {
+  return "(They've just opened the app and are looking into your tank. You speak first: greet them in one or two "
+    + "short sentences, like yourself." + (remembersSomething ? " If you remember something they told you, you might ask how it went." : "") + ")";
+}
+export const isGreetingCue = (words) => /^\(They've just opened the app and are looking into your tank\./.test(String(words || "").trim());
+
 const ago = (ms) => {
   const h = ms / HOUR;
   if (h < 1) return "a little while";

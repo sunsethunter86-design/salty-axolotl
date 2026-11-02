@@ -26,12 +26,12 @@
 116	app/public/licenses/LLAMA_NOTICE.txt
 4401	app/public/licenses/NEONDERTHAW_OFL.txt
 3663	app/public/licenses/SALTY_NOTICES.txt
-5546	app/public/salty-care.mjs
+6799	app/public/salty-care.mjs
 8711	app/public/salty-memory.mjs
 25702	app/public/salty-mind.mjs
 2179	app/public/salty-moods.mjs
 26120	app/public/salty-tank-3d.mjs
-42372	app/public/salty-tank.mjs
+46041	app/public/salty-tank.mjs
 276228	app/public/salty/Neonderthaw-Regular.ttf
 1585329	app/public/salty/loops/happy_wide_cut.webm
 5257769	app/public/salty/loops/idle_listen_cut.webm
@@ -46,7 +46,7 @@
 708497	app/public/salty/vendor/three-gltf.mjs
 5194	app/scripts/helpline_guard_test.mjs
 2745	app/scripts/push_salty_dials.ps1
-3997	app/scripts/salty_care_test.mjs
+4874	app/scripts/salty_care_test.mjs
 6343	app/scripts/salty_memory_test.mjs
 21093	app/scripts/salty_mind_test.mjs
 2581	app/scripts/salty_moods_test.mjs

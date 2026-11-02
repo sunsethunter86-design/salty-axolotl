@@ -4,8 +4,21 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   newCare, loadCare, saveCare, feed, noticed, hungerOf, lonelyOf, moodOf, restFaceOf, careNoteFor,
-  HUNGRY_AFTER_H, LONELY_AFTER_H, STUFFED_FEEDS,
+  shouldGreet, greetingCue, isGreetingCue, HUNGRY_AFTER_H, LONELY_AFTER_H, STUFFED_FEEDS,
 } from "../public/salty-care.mjs";
+
+test("she speaks first only after a real absence, and not twice in half an hour", () => {
+  const now = Date.parse("2026-11-03T09:00:00+10:30");
+  assert.equal(shouldGreet({ gapMs: 3 * 3600e3, now }), true);
+  assert.equal(shouldGreet({ gapMs: 20 * 60e3, now }), false, "a quick app switch is not a return");
+  assert.equal(shouldGreet({ gapMs: 3 * 3600e3, now, lastGreetAt: now - 10 * 60e3 }), false);
+  assert.equal(shouldGreet({ gapMs: 3 * 3600e3, now, lastGreetAt: now - 40 * 60e3 }), true);
+  assert.equal(isGreetingCue(greetingCue()), true);
+  assert.equal(isGreetingCue(greetingCue({ remembersSomething: true })), true);
+  assert.match(greetingCue({ remembersSomething: true }), /ask how it went/);
+  assert.equal(isGreetingCue("Hey Salty"), false);
+  assert.equal(isGreetingCue("(Worked out for you: 2 + 2 = 4.)"), false);
+});
 
 const H = 3600e3, T0 = Date.parse("2026-11-02T09:00:00+10:30");
 

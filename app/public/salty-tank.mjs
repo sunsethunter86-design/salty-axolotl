@@ -12,7 +12,7 @@ import { onSaltyVoiceSounding, saltyVoiceSounding, saltyVoiceLevel, saltyNextSpe
 import { saltyMoodFor } from "./salty-moods.mjs";
 import { setSaltyMemory } from "./salty-mind.mjs";
 import { loadSaltyMemory, saveSaltyMemory, forgetSaltyMemory, forgetSaltyNote, captureFromWords, memoryPromptLine, recallNoteFor } from "./salty-memory.mjs";
-import { loadCare, saveCare, feed, noticed, restFaceOf, moodOf, careNoteFor } from "./salty-care.mjs";
+import { loadCare, saveCare, feed, noticed, restFaceOf, moodOf, careNoteFor, shouldGreet, greetingCue, isGreetingCue } from "./salty-care.mjs";
 import { createSalty3D } from "./salty-tank-3d.mjs?v=20261102-care";
 
 const KEY = "vfl.saltyTank";
@@ -52,6 +52,9 @@ const sessionGapMs = Date.now() - care.lastSeenAt;
 // The "you've been gone" note goes on whatever he says in the first 25 s after he's back: a spoken
 // turn's early prefill sees part of his sentence before the final words land, and both must carry it.
 let firstActivityAt = 0, hungerToldAt = 0, fedToldAt = 0;
+// She speaks first (greet()): the gap her greeting is about, and whether it has been said.
+let greetGapMs = null, gapSpent = false;
+const GREET_AT_KEY = "vfl.saltyGreetAt";
 // One care note per message: computed the first time a request carries that message, then reused for
 // every request of the turn (early prefill, final prompt), so her prompt for a turn never shifts.
 let careNoteCache = { words: null, note: null };
@@ -76,7 +79,12 @@ function careNote(words) {
   const justFed = sinceFed < 3 * 60e3 && fedToldAt < care.lastFedAt;
   // Hunger at most every 20 minutes, or she'd talk about nothing else.
   const mentionHunger = now - hungerToldAt > 20 * 60e3;
-  const note = careNoteFor(care, { now, gapMs: back ? sessionGapMs : 0, justFedMs: justFed ? sinceFed : Infinity, mentionHunger });
+  // Her greeting carries how long he was away (its own gap: a warm return has no session gap); once she
+  // has said it, his reply doesn't get it again, or she'd sulk twice.
+  const greeting = isGreetingCue(words);
+  const gapMs = greeting ? (greetGapMs ?? 0) : (back && !gapSpent ? sessionGapMs : 0);
+  if (greeting) gapSpent = true;
+  const note = careNoteFor(care, { now, gapMs, justFedMs: justFed ? sinceFed : Infinity, mentionHunger });
   if (note && /starving|peckish/.test(note)) hungerToldAt = now;
   if (justFed) fedToldAt = care.lastFedAt;
   careNoteCache = { words, note };
@@ -208,6 +216,8 @@ function mount() {
   wireMemory();
   wireCare();
   placeLegs();
+  // Cold start after a while away: once her mind is awake she says hello first (greetSoon).
+  greetSoon(sessionGapMs);
 }
 
 // 3D Salty (29 Oct model) replaces the video loops when she loads. Any failure — no WebGL,
@@ -437,6 +447,8 @@ function wireControls() {
     state.salty3d?.setPaused(document.hidden);
     if (document.hidden) state.videos.forEach((v) => v.pause());
     else if (!state.salty3d) state.front?.play().catch(() => {});
+    // Back after a while with the app still running: she may greet him (warm return).
+    if (!document.hidden) greetSoon(Date.now() - care.lastSeenAt);
   };
   document.addEventListener("visibilitychange", onVis);
   state.cleanup.push(() => document.removeEventListener("visibilitychange", onVis));
@@ -551,6 +563,56 @@ function send() {
   state.you.textContent = `you: ${text}`;
   state.typed = ""; state.shift = true; state.symbols = false;
   renderKeyboard(); renderLine();
+}
+
+// ---------- she speaks first ----------
+//
+// When he comes back after a while she greets him before he says a word. The tank sends a stage cue
+// (salty-care.mjs greetingCue) through the same form his typed words use, so her engine treats it as
+// an ordinary turn (no side door to her mind); her care note says how long he was gone and how she
+// feels, and her memory may give her something to ask about. The cue never shows as his words, never
+// becomes a memory or a mood, and is not him paying her attention.
+
+let greetTimer = 0;
+const mindIdle = () => {
+  const L = globalThis.__vflLocal;
+  if (!L || L.mindAwake !== true) return false;
+  if (L.turnPending === true || L.thinking === true || L.speaking === true) return false;
+  return !document.querySelector(".phone-shell")?.classList.contains("mic-listening");
+};
+const lastGreetAt = () => { try { return Number(localStorage.getItem(GREET_AT_KEY)) || 0; } catch { return 0; } };
+// Test hook (phone checks over adb/CDP): pretend he last paid her attention `hours` ago, so a warm
+// return can be checked without waiting hours. Only touches her own care record on this phone.
+globalThis.__saltyCareTest = {
+  backdate(hours) { care = { ...care, lastSeenAt: Date.now() - hours * 3600e3 }; saveCare(care); applyRestFace(); return care.lastSeenAt; },
+};
+
+/** Greets him once her mind is ready, if he has been gone long enough; gives up after `waitMs`. */
+function greetSoon(gapMs, waitMs = 4 * 60e3) {
+  clearTimeout(greetTimer);
+  if (!shouldGreet({ gapMs, lastGreetAt: lastGreetAt() })) return;
+  const since = Date.now(), seenAt = care.lastSeenAt;
+  const tryNow = () => {
+    greetTimer = 0;
+    // He spoke, typed or tapped first, or she's away for a dialog: he's started without her.
+    if (!state || !root || root.dataset.away || root.classList.contains("st-yield") || root.classList.contains("typing")) return;
+    if (care.lastSeenAt !== seenAt || document.hidden) return;
+    if (!mindIdle()) { if (Date.now() - since < waitMs) greetTimer = setTimeout(tryNow, 2000); return; }
+    greet(gapMs);
+  };
+  greetTimer = setTimeout(tryNow, 1500);
+}
+
+function greet(gapMs) {
+  const input = document.getElementById("textInput");
+  const form = document.getElementById("textForm");
+  if (!input || !form) return;
+  try { localStorage.setItem(GREET_AT_KEY, String(Date.now())); } catch { /* she may greet again next time */ }
+  greetGapMs = gapMs;
+  input.value = greetingCue({ remembersSomething: memory.facts.length > 0 || memory.moments.length > 0 });
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  lastWordsAt = performance.now();
+  form.requestSubmit();
 }
 
 // ---------- her care loop: feeding, attention, her resting face ----------
@@ -754,7 +816,7 @@ function wireAppState() {
   };
   const captionYou = (words) => {
     clearTimeout(capHide); capHide = 0; capTurn = true; capBusy = false;
-    state.capYou.textContent = `You: ${tail(words.trim(), 90)}`;
+    state.capYou.textContent = words ? `You: ${tail(words.trim(), 90)}` : "";
     state.capHer.textContent = "";
     state.caps.hidden = false;
   };
@@ -789,7 +851,9 @@ function wireAppState() {
       const added = records.flatMap((r) => [...r.addedNodes]).filter((n) => n.classList?.contains("log-message") && n.classList.contains("user"));
       if (added.length !== 1) return; // a batch is a restored conversation, not him talking now
       const words = added[0].querySelector("p")?.textContent || "";
-      if (words.trim()) { lastWordsAt = performance.now(); captionYou(words); attention(); }
+      // Her own greeting cue (she speaks first): her words get captions, nothing else happens.
+      if (isGreetingCue(words)) { lastWordsAt = performance.now(); captionYou(""); return; }
+      if (words.trim()) { lastWordsAt = performance.now(); captionYou(words); attention(); clearTimeout(greetTimer); }
       const mood = saltyMoodFor(words);
       // What he tells her now is kept for next time (salty-memory.mjs; rules on his words only).
       const kept = captureFromWords(memory, words, { mood });
