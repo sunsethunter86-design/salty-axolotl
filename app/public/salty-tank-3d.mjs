@@ -29,6 +29,10 @@ const EXPR = {
   gasp:    { f: { jaw_round: 0.85, round: 1 }, lids: 0 },
   smirk:   { f: { smileL: 1, frown: 0.15 }, lids: 0.38 },
   pout:    { f: { round: 0.85, frown: 0.35 }, lids: 0.15 },
+  // Her care loop (salty-care.mjs, 2 Nov): heavy lids and a frown when he's ignored her; a small
+  // open, wanting mouth when she's hungry. Used as her resting face (setRestExpression).
+  sulk:    { f: { frown: 0.75, round: 0.2 }, lids: 0.5 },
+  hungry:  { f: { jaw_open: 0.16, round: 0.45, frown: 0.12 }, lids: 0.08 },
 };
 // Mood face keyframes (from the viewer): [at, face, lids] eased between keys.
 const MOODS_FACE = {
@@ -267,6 +271,8 @@ export async function createSalty3D(container, { getLevel = () => 0, getViseme =
   let idleTime = 0, swimTime = 0, nextSwimAt = 14;
 
   let expr = "neutral", exprT = 0, talking = false, talkT = 0;
+  // Her resting face: what "rest" means to setExpression (neutral, or sulk/hungry from her care loop).
+  let restExpr = "neutral";
   // Speech: envelope of her real voice, the syllable she is on, and the mouth's
   // current shape (kept separate from the expression so it can shut fast).
   let envLevel = 0, prevEnv = 0, syl = null, sylT = 0, sylDur = 0.18, lastSylAt = -9, quietFor = 0, fallbackAt = 0, mouthT = 0;
@@ -446,7 +452,7 @@ export async function createSalty3D(container, { getLevel = () => 0, getViseme =
     // in a still (Shaun, 30 Oct), so she also grins for a moment, then settles.
     expr = "grin"; exprT = 0;
     if (tapTimer) clearTimeout(tapTimer);
-    tapTimer = setTimeout(() => { expr = "neutral"; }, 1600);
+    tapTimer = setTimeout(() => { expr = restExpr; }, 1600);
   });
 
   return {
@@ -456,7 +462,14 @@ export async function createSalty3D(container, { getLevel = () => 0, getViseme =
     playMood,
     /** True while a one-off move (think, wave, outrage…) is still playing; it returns to idle itself. */
     moodPlaying() { return moodName !== null; },
-    setExpression(name) { if (EXPR[name]) { expr = name; exprT = 0; } },
+    setExpression(name) { if (name === "rest") name = restExpr; if (EXPR[name]) { expr = name; exprT = 0; } },
+    /** Her face whenever nothing else is asked of it ("rest"); applied now if she is resting. */
+    setRestExpression(name) {
+      if (!EXPR[name] || name === restExpr) return;
+      const resting = expr === restExpr;
+      restExpr = name;
+      if (resting) { expr = name; exprT = 0; }
+    },
     setPaused(on) { paused = Boolean(on); if (!paused) clock.getDelta(); },
     dispose() {
       disposed = true;

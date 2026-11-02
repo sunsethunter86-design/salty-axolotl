@@ -125,6 +125,23 @@ html:has(#saltyTank:not(.st-yield)) #orbView { visibility: hidden !important; }
                      border: 1px solid rgba(255, 255, 255, .22); background: rgba(18, 12, 30, .42); color: #fff;
                      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font: 600 18px/1 system-ui, sans-serif; }
 #saltyTank .st-mem-n { font-size: 14px; }
+/* Her care loop (salty-care.mjs): the 🪱 button mirrors the 🐚, pulses when she's hungry; worms drift to her mouth. */
+#saltyTank .st-feed { position: absolute; right: 14px; top: calc(env(safe-area-inset-top, 0px) + 14px); z-index: 4;
+                      width: 44px; height: 40px; padding: 0; border-radius: 20px; font: 20px/1 system-ui, sans-serif;
+                      border: 1px solid rgba(255, 255, 255, .22); background: rgba(18, 12, 30, .42); color: #fff;
+                      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+#saltyTank .st-feed.hungry { border-color: rgba(255, 140, 120, .85); animation: st-hungry 2.4s ease-in-out infinite; }
+@keyframes st-hungry { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 120, 100, 0); } 50% { box-shadow: 0 0 0 6px rgba(255, 120, 100, .28); } }
+#saltyTank.typing .st-feed { opacity: 0; pointer-events: none; }
+#saltyTank .st-worm { position: absolute; top: -4%; left: var(--x, 50%); z-index: 3; font-size: 24px; pointer-events: none;
+                      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .45)); animation: st-worm 2.1s cubic-bezier(.35, .1, .55, 1) both; }
+@keyframes st-worm { 0% { transform: translate(0, 0) rotate(0); opacity: 0; } 8% { opacity: 1; }
+                     50% { transform: translate(var(--sway, 0), calc(var(--fall, 240px) * .45)) rotate(var(--spin, 0deg)); }
+                     88% { opacity: 1; } 100% { transform: translate(calc(var(--sway, 0) * -0.5), var(--fall, 240px)) rotate(calc(var(--spin, 0deg) * -1)); opacity: 0; } }
+#saltyTank .st-toast { position: absolute; right: 14px; top: calc(env(safe-area-inset-top, 0px) + 62px); z-index: 5;
+                       padding: 8px 12px; border-radius: 14px; background: rgba(18, 12, 30, .72); color: #fff;
+                       font: 500 14px/1.2 system-ui, sans-serif; pointer-events: none; }
+#saltyTank .st-toast[hidden] { display: none; }
 #saltyTank .st-mem-n:empty { display: none; }
 #saltyTank.typing .st-mem { opacity: 0; pointer-events: none; }
 #saltyTank .st-memcard { position: absolute; left: 14px; right: 14px; top: calc(env(safe-area-inset-top, 0px) + 62px); z-index: 5;

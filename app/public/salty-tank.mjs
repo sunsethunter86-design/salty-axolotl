@@ -12,7 +12,8 @@ import { onSaltyVoiceSounding, saltyVoiceSounding, saltyVoiceLevel, saltyNextSpe
 import { saltyMoodFor } from "./salty-moods.mjs";
 import { setSaltyMemory } from "./salty-mind.mjs";
 import { loadSaltyMemory, saveSaltyMemory, forgetSaltyMemory, forgetSaltyNote, captureFromWords, memoryPromptLine, recallNoteFor } from "./salty-memory.mjs";
-import { createSalty3D } from "./salty-tank-3d.mjs?v=20261102-moods";
+import { loadCare, saveCare, feed, noticed, restFaceOf, moodOf, careNoteFor } from "./salty-care.mjs";
+import { createSalty3D } from "./salty-tank-3d.mjs?v=20261102-care";
 
 const KEY = "vfl.saltyTank";
 const BASE = "./salty/";
@@ -44,7 +45,47 @@ let mindOnNpu = false;
 // mind's first request of the session: her system prompt then stays the same all session. Notes made
 // during the session are saved at once and shown in the card, and reach her prompt next session.
 let memory = loadSaltyMemory();
-setSaltyMemory(memoryPromptLine(memory), (words) => recallNoteFor(memory, words));
+// Her care loop (salty-care.mjs): hunger and loneliness that grew while the app was closed. How long
+// he'd been away is taken once, now, so his first message of the session carries it.
+let care = loadCare();
+const sessionGapMs = Date.now() - care.lastSeenAt;
+// The "you've been gone" note goes on whatever he says in the first 25 s after he's back: a spoken
+// turn's early prefill sees part of his sentence before the final words land, and both must carry it.
+let firstActivityAt = 0, hungerToldAt = 0, fedToldAt = 0;
+// One care note per message: computed the first time a request carries that message, then reused for
+// every request of the turn (early prefill, final prompt), so her prompt for a turn never shifts.
+let careNoteCache = { words: null, note: null };
+// ☠️ HER BOOT PREWARM SPENT HER FEELINGS ON AN OLD MESSAGE (2 Nov, phone). At start-up the engine is
+// prewarmed with the conversation from before the restart, whose newest user message passed through
+// here, used up the "you've been gone" window and the hunger ration, and her real first turn got no
+// note at all. Only a live turn gets one: Veridity's own turn state, an open mic, or his words just landed.
+let lastWordsAt = -Infinity;
+const liveTurn = () => {
+  const L = globalThis.__vflLocal;
+  if (L && (L.turnPending === true || L.thinking === true)) return true;
+  if (document.querySelector(".phone-shell")?.classList.contains("mic-listening")) return true;
+  return performance.now() - lastWordsAt < 10e3;
+};
+function careNote(words) {
+  if (careNoteCache.words === words) return careNoteCache.note;
+  if (!liveTurn()) return null;
+  const now = Date.now();
+  if (!firstActivityAt) firstActivityAt = now;
+  const back = now - firstActivityAt < 25e3;
+  const sinceFed = now - care.lastFedAt;
+  const justFed = sinceFed < 3 * 60e3 && fedToldAt < care.lastFedAt;
+  // Hunger at most every 20 minutes, or she'd talk about nothing else.
+  const mentionHunger = now - hungerToldAt > 20 * 60e3;
+  const note = careNoteFor(care, { now, gapMs: back ? sessionGapMs : 0, justFedMs: justFed ? sinceFed : Infinity, mentionHunger });
+  if (note && /starving|peckish/.test(note)) hungerToldAt = now;
+  if (justFed) fedToldAt = care.lastFedAt;
+  careNoteCache = { words, note };
+  // For checking on the phone what her last turn was told (read-only; nothing reads it back).
+  globalThis.__saltyLastCareNote = { words, note, at: now };
+  return note;
+}
+const turnNotes = (words) => [recallNoteFor(memory, words), careNote(words)].filter(Boolean).join(" ") || null;
+setSaltyMemory(memoryPromptLine(memory), turnNotes);
 
 function remembered() {
   try { return localStorage.getItem(KEY) === "1"; } catch { return false; }
@@ -72,7 +113,7 @@ function mount() {
   if (root || !document.body) return;
   let css = document.querySelector("link[data-salty-tank]");
   if (!css) {
-    css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261102-captions`, "data-salty-tank": "" });
+    css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261102-care2`, "data-salty-tank": "" });
     document.head.append(css);
   }
   root = el("div", "", { id: "saltyTank", role: "application", "aria-label": "Salty's tank" });
@@ -120,6 +161,8 @@ function mount() {
          .st-stage because every press on the stage is a press on Salty (salty-tank-3d.mjs taps). -->
     <a class="st-credit" href="./licenses/SALTY_NOTICES.txt" target="_blank" rel="noopener noreferrer">Built with Llama<span class="st-credit-muse">coded with Muse Wonder</span><span>Salty is an AI · she can be wrong</span></a>
     <button class="st-mem" type="button" aria-label="What Salty remembers about you">🐚 <span class="st-mem-n"></span></button>
+    <button class="st-feed" type="button" aria-label="Feed Salty some bloodworms">🪱</button>
+    <div class="st-toast" aria-live="polite" hidden></div>
     <div class="st-memcard" role="dialog" aria-label="What Salty remembers" hidden>
       <div class="st-memhead"><b>What Salty remembers</b><button class="st-memclose" type="button" aria-label="Close">×</button></div>
       <ul class="st-memlist"></ul>
@@ -163,6 +206,7 @@ function mount() {
   wireControls();
   wireAppState();
   wireMemory();
+  wireCare();
   placeLegs();
 }
 
@@ -179,6 +223,7 @@ async function init3D() {
       getViseme: () => saltyNextSpeechViseme(),
       onTap: () => {
         if (!state || state !== mine || state.mood === "talk") return;
+        attention();
         mine.tapAlt = !mine.tapAlt;
         mine.salty3d?.playMood(mine.tapAlt ? "wave" : "wink");
       },
@@ -191,6 +236,7 @@ async function init3D() {
     const mood = mine.mood;
     mine.mood = ""; mine.target = "";
     setMood(mood);
+    applyRestFace();
   } catch (e) {
     console.warn("Salty 3D did not load; keeping her video loops", e);
   }
@@ -255,7 +301,7 @@ function setMood(mood) {
     const toIdle = () => { if (!d.moodPlaying?.()) d.playLoop("idle"); };
     if (mood === "talk") { toIdle(); d.setExpression("neutral"); d.setTalking(true); }
     else if (mood === "happy") { d.setTalking(false); d.playLoop("happy"); d.setExpression("laugh"); }
-    else { d.setTalking(false); toIdle(); d.setExpression("neutral"); }
+    else { d.setTalking(false); toIdle(); d.setExpression("rest"); }
     return;
   }
   const id = ++state.switchId;
@@ -500,10 +546,72 @@ function send() {
   if (!text || !input || !form) return;
   input.value = text;
   input.dispatchEvent(new Event("input", { bubbles: true }));
+  lastWordsAt = performance.now(); // before the submit: her first request for this turn may go out inside it
   form.requestSubmit();
   state.you.textContent = `you: ${text}`;
   state.typed = ""; state.shift = true; state.symbols = false;
   renderKeyboard(); renderLine();
+}
+
+// ---------- her care loop: feeding, attention, her resting face ----------
+
+/** He talked to her, tapped her or fed her: she's not lonely any more. */
+function attention() {
+  if (!firstActivityAt) firstActivityAt = Date.now();
+  care = noticed(care);
+  saveCare(care);
+  applyRestFace();
+}
+
+/** Her resting face and the 🪱 button follow how she feels (checked every minute, and on any change). */
+function applyRestFace() {
+  if (!state) return;
+  state.salty3d?.setRestExpression?.(restFaceOf(care));
+  root.querySelector(".st-feed")?.classList.toggle("hungry", moodOf(care).hunger !== "full");
+}
+
+function wireCare() {
+  root.querySelector(".st-feed").addEventListener("click", () => {
+    const r = feed(care);
+    care = r.care;
+    saveCare(care);
+    if (r.result === "stuffed") { toast("She's stuffed. Maybe later."); applyRestFace(); return; }
+    dropWorms();
+    // She lunges for them as they reach her (the celebrate move: mouth wide, arms out).
+    setTimeout(() => { if (state && state.mood !== "talk") state.salty3d?.playMood("celebrate"); }, 1500);
+    applyRestFace();
+  });
+  state.timers.push(setInterval(applyRestFace, 60e3));
+  applyRestFace();
+}
+
+// Bloodworms drift down from the surface to about her mouth, sway a little, and are gone.
+function dropWorms() {
+  const tank = state?.tank;
+  if (!tank) return;
+  // ☠️ The fall was sized to the worm (a % of its own height): they stopped a third of the way down,
+  // nowhere near her (2 Nov, phone). It's sized to the tank now: to about her mouth.
+  const fall = `${Math.round(tank.clientHeight * 0.46)}px`;
+  for (let i = 0; i < 7; i++) {
+    const w = el("span", "st-worm");
+    w.textContent = "🪱";
+    w.style.setProperty("--fall", fall);
+    w.style.setProperty("--x", `${38 + Math.random() * 24}%`);
+    w.style.setProperty("--sway", `${(Math.random() - 0.5) * 30}px`);
+    w.style.setProperty("--spin", `${(Math.random() - 0.5) * 120}deg`);
+    w.style.animationDelay = `${i * 110}ms`;
+    w.addEventListener("animationend", () => w.remove(), { once: true });
+    tank.append(w);
+  }
+}
+
+let toastTimer = 0;
+function toast(text) {
+  const t = root?.querySelector(".st-toast");
+  if (!t) return;
+  t.textContent = text; t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
 }
 
 // ---------- what she remembers: the shell button and its card ----------
@@ -513,7 +621,7 @@ function wireMemory() {
   btn.addEventListener("click", () => { renderMemory(); card.hidden = !card.hidden; });
   root.querySelector(".st-memclose").addEventListener("click", () => { card.hidden = true; });
   // Forgetting takes effect now, in her prompt too (one re-read of it), not next session.
-  const forgotten = () => { setSaltyMemory(memoryPromptLine(memory), (words) => recallNoteFor(memory, words)); renderMemory(); };
+  const forgotten = () => { setSaltyMemory(memoryPromptLine(memory), turnNotes); renderMemory(); };
   root.querySelector(".st-memforget").addEventListener("click", () => {
     memory = forgetSaltyMemory();
     forgotten();
@@ -681,7 +789,7 @@ function wireAppState() {
       const added = records.flatMap((r) => [...r.addedNodes]).filter((n) => n.classList?.contains("log-message") && n.classList.contains("user"));
       if (added.length !== 1) return; // a batch is a restored conversation, not him talking now
       const words = added[0].querySelector("p")?.textContent || "";
-      if (words.trim()) captionYou(words);
+      if (words.trim()) { lastWordsAt = performance.now(); captionYou(words); attention(); }
       const mood = saltyMoodFor(words);
       // What he tells her now is kept for next time (salty-memory.mjs; rules on his words only).
       const kept = captureFromWords(memory, words, { mood });
