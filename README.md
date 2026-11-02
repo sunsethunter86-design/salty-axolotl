@@ -25,6 +25,8 @@ New for the hackathon:
 - **Her mind on the NPU:** a JNI bridge from the app's engine interface to llama.cpp's ggml Hexagon backend, with streaming tokens, ~1 ms conversation rewind (sequence checkpoints), exact cache accounting and a 4096-token context on a DSP mapping budget. Measured on the phone: 871 tok/s prefill and 20 tok/s decode at Q4_0 in a bench; 9 tok/s decode in the app at the Q6_K quality pick. ([app/android/app/native-hex](app/android/app/native-hex), [experiments/salty/npu](experiments/salty/npu))
 - **Her conversation layer:** prompt assembly, a sliding history window that keeps prefill reuse high, background-job deferral, a deterministic helper so she never does sums in her head (`saltyFacts`), and a helpline guard that removes invented emergency numbers. ([app/public/salty-mind.mjs](app/public/salty-mind.mjs), [app/public/helpline-guard.mjs](app/public/helpline-guard.mjs))
 - **She remembers you:** short notes kept only on the phone, taken from *your* words by plain rules (your dog's name, your partner, where you live, what you love, and your own sentence from moments that moved her), never written by her model. They join her prompt once per session, so her engine's persona checkpoint holds, and when you ask about something personal the page tells her what she does or doesn't know, so she says "you haven't told me" instead of inventing (before that fix she named a cat that didn't exist "Muffin"). A 🐚 card shows every note, with forget-one and forget-everything. Tested across a cold restart on the phone. ([app/public/salty-memory.mjs](app/public/salty-memory.mjs))
+- **She needs you:** a Tamagotchi-style care loop where her feelings reach her mind. Hunger and loneliness grow in real time, also while the app is closed (kept on the phone). The 🪱 button drops bloodworms that drift down to her mouth; feed her three times in an hour and she's stuffed. At rest her face sulks or looks hungry. On your next message the page gives her a short cue about how she feels, so the Llama on the phone says it in her own words, cheeky and never cruel. Tested after a simulated 20 hours of neglect: *"Twenty hours, and not a single bite. The council, by the way, has been informed."* Then fed: *"Bloodworms. The perfect snack. I'm stuffed, I'm content, and I still haven't told you how much I missed you."* ([app/public/salty-care.mjs](app/public/salty-care.mjs); cue wording tested against her own GGUF with [experiments/salty/npu/care_prompt_lab.mjs](experiments/salty/npu/care_prompt_lab.mjs))
+- **Live captions:** your words and hers at the top of the tank as she speaks, for watching muted and for anyone who can't hear her.
 - **She reacts with her body:** outrage, sympathy, celebrate, sleepy and wave moves play the moment your words land, before she answers ("my dog nicked a sausage" → outrage, "rough day" → sympathy, "I got the job" → celebrate). Plain rules on your words; anything unclear plays nothing. ([app/public/salty-moods.mjs](app/public/salty-moods.mjs))
 - **Her tank:** a three.js aquarium with a rigged 3D Salty whose mouth follows her real voice level and syllables, blinking and an idle swim. She keeps moving while she thinks, because her mind is on the NPU and not the GPU the tank draws with. While she's up, the host app's hidden home screen stops animating underneath her (idle CPU 89% → 32% for the app process, measured), and she launches straight into her tank with her own icon and splash. ([app/public/salty-tank.mjs](app/public/salty-tank.mjs), [app/public/salty-tank-3d.mjs](app/public/salty-tank-3d.mjs))
 - **Her body:** a Blender pipeline from a Meshy base mesh to feathery gills, skin, eyelids, lashes, mouth and teeth, a 23-bone rig and her animations. ([salty-rig](salty-rig))
@@ -37,7 +39,7 @@ Timeline note: the style spec, eval rubric and held-out prompts were drafted on 
 | Path | What |
 |---|---|
 | `app/public/` | Salty's web layer inside the app, her tank assets, and licences |
-| `app/scripts/` | Tests: `salty_mind_test.mjs` (mutation-tested), `salty_memory_test.mjs`, `salty_moods_test.mjs`, `helpline_guard_test.mjs`; `push_salty_dials.ps1` |
+| `app/scripts/` | Tests: `salty_mind_test.mjs` (mutation-tested), `salty_memory_test.mjs`, `salty_moods_test.mjs`, `salty_care_test.mjs`, `helpline_guard_test.mjs`; `push_salty_dials.ps1` |
 | `app/android/app/native-hex/` | `vfhex_jni.cpp` (llama.cpp Hexagon bridge) and its build script |
 | `experiments/salty/` | Style, training configs and scripts, eval set, recorded runs and scores, NPU research and reports |
 | `salty-rig/` | Blender scripts for her 3D body, the Meshy base and the exported animated model |
@@ -51,7 +53,7 @@ Run the tests (Node 20+):
 cd app
 node scripts/salty_mind_test.mjs
 node scripts/helpline_guard_test.mjs
-node --test scripts/salty_memory_test.mjs scripts/salty_moods_test.mjs
+node --test scripts/salty_memory_test.mjs scripts/salty_moods_test.mjs scripts/salty_care_test.mjs
 ```
 
 ## What is not here, and why
@@ -68,6 +70,7 @@ node --test scripts/salty_memory_test.mjs scripts/salty_moods_test.mjs
 - Pressing Stop during a long spoken reply doesn't halt her promptly yet.
 - First audio on later sentences can lag 2–3 s (generation-bound).
 - Her memory only keeps what its rules recognise, so plenty of what you say isn't kept. She can still fill small gaps in conversation (she called the dog "she" without being told). Notes you add reach her prompt from the next session; in the same session she has the conversation itself.
+- Her sampler runs with a fixed seed, so the same conversation gets the same reply. That's handy for retakes, but she can repeat herself if you repeat yourself. She also sees the last few turns from before a restart and sometimes brings an old line back.
 - Inside the host app, the exact sentence "What do you remember about me?" is caught by the host's own memory command, which answers in its own voice. Any other phrasing ("Hey Salty, what do you remember about me?") reaches her.
 - She is an AI and can be wrong; she swears and is not meant for children. See [app/public/licenses/SALTY_NOTICES.txt](app/public/licenses/SALTY_NOTICES.txt).
 
