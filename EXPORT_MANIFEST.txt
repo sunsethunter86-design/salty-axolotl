@@ -12,7 +12,7 @@
 3663	app/public/licenses/SALTY_NOTICES.txt
 24788	app/public/salty-mind.mjs
 25062	app/public/salty-tank-3d.mjs
-28019	app/public/salty-tank.mjs
+28368	app/public/salty-tank.mjs
 276228	app/public/salty/Neonderthaw-Regular.ttf
 1585329	app/public/salty/loops/happy_wide_cut.webm
 5257769	app/public/salty/loops/idle_listen_cut.webm
@@ -20,7 +20,7 @@
 408036	app/public/salty/reef_inside.jpg
 1827458	app/public/salty/reef_inside.png
 73847	app/public/salty/room.jpg
-15731	app/public/salty/salty-tank.css
+16485	app/public/salty/salty-tank.css
 9053752	app/public/salty/salty_phone.glb
 53770	app/public/salty/studio_env.png
 1081	app/public/salty/vendor/THREE_LICENSE.txt
@@ -91,6 +91,7 @@
 947	experiments/salty/npu/aot_try2.py
 2423	experiments/salty/npu/audio_probe.mjs
 908	experiments/salty/npu/bench_device.ps1
+1298	experiments/salty/npu/cdp_eval.mjs
 861	experiments/salty/npu/check_calib.py
 375	experiments/salty/npu/check_kv.sh
 404	experiments/salty/npu/check_qsv27.py
@@ -109,6 +110,7 @@
 175	experiments/salty/npu/gguf/fix_ndk.sh
 898	experiments/salty/npu/gguf/fix_symlinks.py
 306	experiments/salty/npu/gguf/probe_clang.sh
+3217	experiments/salty/npu/idle_heat_probe.mjs
 2119	experiments/salty/npu/inspect54.py
 829	experiments/salty/npu/inspect_calib.py
 621	experiments/salty/npu/list_inputs.py

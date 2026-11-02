@@ -63,7 +63,7 @@ function el(tag, cls, attrs = {}) {
 function mount() {
   if (root || !document.body) return;
   if (!document.querySelector("link[data-salty-tank]")) {
-    const css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261102-credit2`, "data-salty-tank": "" });
+    const css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261102-cool`, "data-salty-tank": "" });
     document.head.append(css);
   }
   root = el("div", "", { id: "saltyTank", role: "application", "aria-label": "Salty's tank" });
@@ -173,6 +173,13 @@ function unmount() {
   root.remove();
   document.querySelector(".st-return")?.remove();
   root = null; state = null;
+  uncovered();
+}
+
+// While she is up, salty-tank.css hides Veridity's home screen and its orb stops drawing (heat, 2 Nov).
+// Whenever the tank steps aside, app.js hears this and asks the orb for a frame so it is never left frozen.
+function uncovered() {
+  window.dispatchEvent(new Event("salty-tank-uncovered"));
 }
 
 // ---------- scene ----------
@@ -348,6 +355,7 @@ function wireControls() {
 function hideForNow() {
   root.classList.add("st-yield");
   root.dataset.away = "1";
+  uncovered();
   const pill = el("button", "st-return", { type: "button" });
   pill.textContent = "🐠 Salty's tank";
   pill.addEventListener("click", () => { pill.remove(); delete root.dataset.away; root.classList.remove("st-yield"); placeLegs(); });
@@ -551,7 +559,8 @@ function wireAppState() {
     const open = [...document.querySelectorAll(DIALOGS)].some((d) => !root.contains(d) && d.getClientRects().length > 0);
     if (open !== root.classList.contains("st-yield")) {
       root.classList.toggle("st-yield", open);
-      if (!open) placeLegs();
+      if (open) uncovered();
+      else placeLegs();
     }
   }, 500));
 }

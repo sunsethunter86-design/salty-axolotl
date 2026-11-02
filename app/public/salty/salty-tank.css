@@ -14,6 +14,14 @@
 #saltyTank { position: fixed; inset: 0; z-index: 100; overflow: hidden; background: #1d1a17; color: #f3ece6;
              font: 15px/1.4 system-ui, sans-serif; -webkit-tap-highlight-color: transparent; user-select: none; }
 #saltyTank.st-yield { display: none; }
+/* ☠️ HEAT: VERIDITY KEPT ANIMATING UNDER HER (2 Nov, phone at 40 °C). Behind the full-screen tank, Veridity's
+   home screen still ran its WebGL galaxy orb and ~46 CSS animations (wave bars, radio bars, wordmark shimmer),
+   none of it visible. While the tank is up and not yielding to a dialog, hide them: nothing there paints, and
+   the orb's renderer stops by itself because its mount is no longer visible. Layout is kept (visibility, not
+   display), so Veridity's controls the tank drives (#micBtn, #textForm) keep working. salty-tank.mjs nudges the
+   orb awake whenever the tank steps aside. */
+html:has(#saltyTank:not(.st-yield)) .screen[data-screen="home"],
+html:has(#saltyTank:not(.st-yield)) #orbView { visibility: hidden !important; }
 #saltyTank .st-bg { position: absolute; inset: -40px; background: url(room.jpg) center / cover; filter: blur(18px) brightness(.55); }
 
 /* ---- The scene (as tank.html) ---- */
