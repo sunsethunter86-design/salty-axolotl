@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Salty's Tank</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Neonderthaw&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #1d1a17; --ink: #f3ece6; --btn: rgba(30, 24, 20, .72); --btn-on: #d9578f; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+  /* Behind everything: a soft, dim copy of the room, so a tall phone screen has no black bands. */
+  body::before { content: ""; position: fixed; inset: -40px; background: url(room.jpg) center / cover; filter: blur(18px) brightness(.55); }
+
+  /* The stage keeps the room photo's shape (1024 x 572); everything inside is placed in % of the photo.
+     Its centre sits on the tank's centre (photo 50%, 53%), and it's zoomed so Salty isn't far away:
+     wide screens fit the photo and enlarge it 1.3x; tall (portrait) screens size it so the tank fills the width. */
+  .stage { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -53%); aspect-ratio: 1024 / 572; container-type: inline-size;
+           width: calc(min(100vw, 100vh * 1024 / 572) * 1.3); }
+  /* Portrait: zoom in until the tank is about half the screen tall (tank height = 0.2432 x stage width);
+     its sides run off the edges and Salty stays centred, with the wall above and the table below. */
+  @media (orientation: portrait) { .stage { width: max(calc(100vw * .94 / .415), calc(100vh * .5 / .2432)); } }
+  .room { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  /* The whole front glass: photo pixels x 296-729, y 174-429 (1.70 : 1), the same box as .rim, so the water
+     reaches right up to the glass edges, which .rim then draws on top.
+     It shows the reef photo cropped to the inside of its glass (reef_inside.jpg, also 1.70 : 1). */
+  /* Underneath: the room photo itself, lined up with the tank (same mapping as .rim), so the couch behind the
+     tank shows through its back glass where the reef picture is see-through. */
+  .tank { position: absolute; left: 28.91%; top: 30.42%; width: 42.29%; height: 44.58%; overflow: hidden;
+          background: url(room.jpg) no-repeat; background-size: 236.5% 224.3%; background-position: 50.66% 54.94%; }
+  /* the reef, with its plain background half see-through (reef_inside.png, made by fix_reef.py) */
+  .reef { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+  /* Salty, cut out of her clip (see-through WebM), sitting on the sand in front of the coral.
+     Clips framed like idle end at her waist: that edge sits 5% up from the floor, just under the sand bank.
+     Each clip can set --x, --y (bottom) and --w to line her up with the idle clip (see MOODS below).
+     Her clip is lit by warm daylight; the filter pulls her toward the reef's blue-violet light. */
+  .tank video { position: absolute; left: var(--x, 13%); bottom: var(--y, 5%); width: var(--w, 70%); aspect-ratio: 16 / 9; object-fit: cover; opacity: 0;
+                transition: opacity .25s linear; filter: url(#reeflight); }
+  .tank video.on { opacity: 1; }
+  /* a soft shadow on the sand around her, so she sits on it rather than floating in front of it */
+  .contact { position: absolute; left: 22%; width: 52%; bottom: 3%; height: 10%; pointer-events: none; mix-blend-mode: multiply;
+             background: radial-gradient(closest-side, rgba(40, 20, 80, .55), rgba(40, 20, 80, 0)); }
+  /* front sand bank: the reef photo's own sand, with a short soft edge (a long fade made her look ghostly) */
+  .sandfront { position: absolute; inset: 0; pointer-events: none; background: url(reef_inside.jpg) 0 0 / 100% 100%;
+               -webkit-mask: linear-gradient(to bottom, transparent 92%, #000 94.5%); mask: linear-gradient(to bottom, transparent 92%, #000 94.5%); }
+  .bubble { position: absolute; bottom: -4%; border-radius: 50%; pointer-events: none;
+            border: 1px solid rgba(255,255,255,.75); background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.8), rgba(255,255,255,.08) 60%);
+            animation: rise linear infinite; }
+  @keyframes rise { 0% { transform: translate(0, 0); opacity: 0; } 8% { opacity: .9; } 85% { opacity: .8; }
+                    100% { transform: translate(var(--sway), calc(var(--h) * -1)); opacity: 0; } }
+  /* glass: a soft diagonal shine over the front pane */
+  .shine { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen;
+           background: linear-gradient(115deg, transparent 0 18%, rgba(255,255,255,.14) 22%, transparent 30% 62%, rgba(255,255,255,.08) 66%, transparent 72%); }
+
+  /* The photo's own glass edges, laid back over the video so the tank still frames it.
+     Outer front glass: x 296-729, y 174-429; only a thin border of it shows (mask). */
+  .rim { position: absolute; left: 28.91%; top: 30.42%; width: 42.29%; height: 44.58%; pointer-events: none;
+         background: url(room.jpg) no-repeat; background-size: 236.5% 224.3%; background-position: 50.66% 54.94%;
+         padding: .6%; box-sizing: border-box;
+         -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+         mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+
+  /* The lamp on the right, switched on. Shade: photo x 775-864 at the top (y 197), 770-870 at the bottom (y 266).
+     Layers, all screen-blended over the photo: a halo on the wall, the shade lit through its fabric,
+     a bright rim at its open bottom, and a cone of light down over the vase and side table. */
+  .lamp { position: absolute; pointer-events: none; mix-blend-mode: screen; }
+  .lamp.halo { left: 67%; top: 26%; width: 26%; height: 40%;
+               background: radial-gradient(closest-side, rgba(255, 186, 110, .32), rgba(255, 186, 110, 0)); }
+  .lamp.shade { left: 75.2%; top: 34.4%; width: 9.8%; height: 12.1%; clip-path: polygon(5% 0, 94% 0, 100% 100%, 0 100%);
+                background: linear-gradient(to bottom, rgba(255, 212, 150, .22), rgba(255, 196, 120, .55)); }
+  .lamp.rim { left: 75.6%; top: 45.3%; width: 9%; height: 2.4%; filter: blur(2px);
+              background: radial-gradient(closest-side, rgba(255, 240, 205, .95), rgba(255, 200, 130, 0)); }
+  .lamp.cone { left: 70%; top: 44.8%; width: 20%; height: 22%;
+               background: radial-gradient(ellipse 50% 100% at 50% 7%, rgba(255, 192, 115, .5), rgba(255, 170, 90, .18) 55%, rgba(255, 170, 90, 0) 80%);
+               -webkit-mask: linear-gradient(to bottom, transparent, #000 14%); mask: linear-gradient(to bottom, transparent, #000 14%); }  /* no hard top edge */
+
+  /* Neon "Salty" sign on the table's front beam (photo x 310-690, y 455-490; centre 48.8%, 82.3%).
+     Sized in cqw (1% of the stage's width) so it stays on the beam at every screen size. */
+  .neon { position: absolute; left: 48.8%; top: 82.3%; transform: translate(-50%, -64%); pointer-events: none; white-space: nowrap;
+          font: 3.2cqw/1 'Neonderthaw', 'Pacifico', cursive; color: #ffe6f3;
+          text-shadow: 0 0 .03em #fff, 0 0 .08em #ff8cc6, 0 0 .18em #ff3d9a, 0 0 .4em #ff2d8a, 0 0 .8em #ff2d8a;
+          animation: flicker 9s infinite; }
+  /* the pink light it throws onto the wood */
+  .neonglow { position: absolute; left: 48.8%; top: 82.3%; width: 30%; height: 9%; transform: translate(-50%, -50%); pointer-events: none;
+              background: radial-gradient(closest-side, rgba(255, 60, 150, .55), rgba(255, 60, 150, 0)); mix-blend-mode: screen;
+              animation: flicker 9s infinite; }
+  @keyframes flicker { 0%, 61%, 63.5%, 66%, 100% { opacity: 1; } 62%, 65% { opacity: .35; } 64% { opacity: .8; } }
+
+  .moods { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: calc(100vw - 32px); }
+  .moods button { font: inherit; color: var(--ink); background: var(--btn); border: 1px solid rgba(255,255,255,.18); border-radius: 999px; padding: 6px 12px; cursor: pointer; backdrop-filter: blur(6px); }
+  .moods button[aria-pressed="true"] { background: var(--btn-on); border-color: transparent; }
+</style>
+</head>
+<body>
+<!-- Reef light on Salty: a little less red and green, a little more blue, so her pink turns lavender-pink, not blue. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="reeflight" color-interpolation-filters="sRGB">
+    <feColorMatrix type="matrix" values=".90 0 0 0 0   0 .84 0 0 0   0 0 .96 0 .05   0 0 0 1 0"/>
+  </filter>
+</svg>
+<div class="stage">
+  <img class="room" src="room.jpg" alt="A sunlit living room with an aquarium on a side table">
+  <div class="lamp halo"></div><div class="lamp cone"></div><div class="lamp shade"></div><div class="lamp rim"></div>
+  <div class="tank" id="tank">
+    <img class="reef" src="reef_inside.png" alt="">
+    <div class="contact"></div>
+    <video muted loop playsinline preload="auto"></video>
+    <video muted loop playsinline preload="auto"></video>
+    <div class="sandfront"></div>
+    <div class="shine"></div>
+  </div>
+  <div class="rim"></div>
+  <div class="neonglow"></div>
+  <div class="neon" aria-label="Salty">Salty</div>
+</div>
+<div class="moods" id="moods"></div>
+
+<script>
+// Mood -> cut-out loop (made by cutout.py). Only clips framed like idle can sit in the same spot;
+// the close-up and wide ones come back once there are matching clips.
+// Wide clips show all of her, so they're drawn bigger and lower to match her size in the idle clip
+// and stand her feet on the sand (x = left edge, y = bottom edge, w = width, all in % of the tank).
+const MOODS = {
+  idle:  { clip: 'idle_listen_cut' },
+  talk:  { clip: 'talk_medium_cut' },
+  happy: { clip: 'happy_wide_cut', x: '-4%', y: '-6%', w: '100%' },
+};
+const tank = document.getElementById('tank');
+const [a, b] = tank.querySelectorAll('video');
+let front = a, current = null;
+
+// Two video layers: the next loop starts underneath, then fades in, so a switch never flashes black.
+function setMood(mood) {
+  const m = MOODS[mood] || MOODS.idle;
+  if (m.clip === current) return;
+  current = m.clip;
+  const next = front === a ? b : a;
+  for (const k of ['x', 'y', 'w']) m[k] ? next.style.setProperty(`--${k}`, m[k]) : next.style.removeProperty(`--${k}`);
+  next.src = `loops/${m.clip}.webm`;
+  next.currentTime = 0;
+  next.play().catch(() => {});
+  next.addEventListener('playing', () => { next.classList.add('on'); front.classList.remove('on'); front = next; }, { once: true });
+  document.querySelectorAll('#moods button').forEach(btn => btn.setAttribute('aria-pressed', btn.dataset.mood === mood));
+}
+window.setMood = setMood;
+
+const bar = document.getElementById('moods');
+for (const mood of Object.keys(MOODS)) {
+  const btn = document.createElement('button');
+  btn.textContent = mood; btn.dataset.mood = mood;
+  btn.onclick = () => setMood(mood);
+  bar.append(btn);
+}
+
+for (let i = 0; i < 14; i++) {
+  const s = document.createElement('div');
+  const size = (tank.clientWidth || 500) * (0.003 + Math.random() * 0.006);   // tiny: 0.3-0.9% of the tank's width
+  s.className = 'bubble';
+  s.style.cssText = `left:${4 + Math.random() * 92}%;width:${size}px;height:${size}px;` +
+    `--h:${(tank.clientHeight || 250) * 0.9}px;--sway:${(Math.random() - .5) * 24}px;` +
+    `animation-duration:${5 + Math.random() * 6}s;animation-delay:${-Math.random() * 10}s`;
+  tank.insertBefore(s, tank.querySelector('.sandfront'));
+}
+
+setMood('idle');
+</script>
+</body>
+</html>

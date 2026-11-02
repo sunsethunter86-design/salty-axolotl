@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Salty loops</title>
+<style>
+  :root { --bg: #f6f1ec; --card: #fffaf6; --ink: #2b2420; --muted: #7a6d64; --line: #e6dbd2; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #1b1715; --card: #26201d; --ink: #f1e8e1; --muted: #a8998e; --line: #3a312c; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.lead { color: var(--muted); margin: 0 0 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  figure { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  video, img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #000; }
+  figcaption { padding: 10px 12px 12px; }
+  figcaption b { display: block; }
+  figcaption span { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Salty loops</h1>
+  <p class="lead">Cut from the Gemini clip. Each one plays forward then back, so it loops with no jump.</p>
+  <div class="grid">
+    <figure><video src="loops/idle_listen.mp4" autoplay muted loop playsinline></video>
+      <figcaption><b>idle_listen</b><span>Mouth closed, blinks, little head tilts. For idle and while you're talking. 18 s before it repeats.</span></figcaption></figure>
+    <figure><video src="loops/talk_medium.mp4" autoplay muted loop playsinline></video>
+      <figcaption><b>talk_medium</b><span>Talking, small wave. Medium shot, the best default framing.</span></figcaption></figure>
+    <figure><video src="loops/cheeky_wink_closeup.mp4" autoplay muted loop playsinline></video>
+      <figcaption><b>cheeky_wink_closeup</b><span>Winks, grins, says something. Close-up.</span></figcaption></figure>
+    <figure><video src="loops/happy_wide.mp4" autoplay muted loop playsinline></video>
+      <figcaption><b>happy_wide</b><span>Squints happily, then grins. Wide shot, lying along the couch.</span></figcaption></figure>
+    <figure><video src="loops/beam_bigclose.mp4" autoplay muted loop playsinline></video>
+      <figcaption><b>beam_bigclose</b><span>Face fills the frame, soft smile. Short (1.5 s).</span></figcaption></figure>
+    <figure><video src="loops/talk_wide_collar.mp4" autoplay muted loop playsinline></video>
+      <figcaption><b>talk_wide_collar</b><span>Talking, wide shot. She wears a collar here and nowhere else.</span></figcaption></figure>
+    <figure><img src="salty-start-still.png" alt="Salty, medium shot, mouth closed, on the couch">
+      <figcaption><b>salty-start-still.png</b><span>Upload this as the starting image for every new Gemini clip.</span></figcaption></figure>
+  </div>
+</main>
+</body>
+</html>

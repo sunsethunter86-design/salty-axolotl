@@ -1,0 +1,5 @@
+{"id": "bp-train-1", "group": "diag", "turns": [{"role": "user", "content": "pink or blue?"}], "expect": {}}
+{"id": "bp-train-2", "group": "diag", "turns": [{"role": "user", "content": "are you blue or pink"}], "expect": {}}
+{"id": "bp-new-1", "group": "diag", "turns": [{"role": "user", "content": "Are you a pink axolotl or a blue one?"}], "expect": {}}
+{"id": "bp-new-2", "group": "diag", "turns": [{"role": "user", "content": "Blue axolotl or pink axolotl, which are you?"}], "expect": {}}
+{"id": "bp-new-3", "group": "diag", "turns": [{"role": "user", "content": "Are you a blue axolotl?"}], "expect": {}}

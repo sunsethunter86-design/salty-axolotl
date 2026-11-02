@@ -1,0 +1,164 @@
+/* Salty's tank: the home screen while the Salty (Llama) mind is loaded. Hackathon, self-contained.
+   Scene layout is the PC preview's (D:\MuseTest\salty-video\tank.html); everything is scoped under #saltyTank.
+   It sits above Veridity's own UI (whose highest layer is 45) and steps aside for app dialogs (.st-yield). */
+
+/* Bundled so the sign works offline: google/fonts ofl/neonderthaw (SIL OFL 1.1, licenses/NEONDERTHAW_OFL.txt).
+   `cursive` (Android: Dancing Script) only if the file is ever missing. */
+@font-face { font-family: 'Neonderthaw'; src: url(Neonderthaw-Regular.ttf) format('truetype'); font-display: swap; }
+
+/* One hue that turns all the way round; the tile edge and every key read it, each with its own offset. */
+@property --st-h { syntax: '<number>'; inherits: true; initial-value: 0; }
+@keyframes st-hue { to { --st-h: 360; } }
+@keyframes st-spin { to { transform: rotate(360deg); } }
+
+#saltyTank { position: fixed; inset: 0; z-index: 100; overflow: hidden; background: #1d1a17; color: #f3ece6;
+             font: 15px/1.4 system-ui, sans-serif; -webkit-tap-highlight-color: transparent; user-select: none; }
+#saltyTank.st-yield { display: none; }
+#saltyTank .st-bg { position: absolute; inset: -40px; background: url(room.jpg) center / cover; filter: blur(18px) brightness(.55); }
+
+/* ---- The scene (as tank.html) ---- */
+#saltyTank .st-stage { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -53%); aspect-ratio: 1024 / 572; container-type: inline-size;
+                       width: calc(min(100vw, 100vh * 1024 / 572) * 1.3); transition: transform .45s cubic-bezier(.2, .8, .2, 1); }
+@media (orientation: portrait) { #saltyTank .st-stage { width: max(calc(100vw * .94 / .415), calc(100vh * .5 / .2432)); } }
+#saltyTank .st-room { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#saltyTank .st-tank { position: absolute; left: 28.91%; top: 30.42%; width: 42.29%; height: 44.58%; overflow: hidden;
+                      background: url(room.jpg) no-repeat; background-size: 236.5% 224.3%; background-position: 50.66% 54.94%; }
+#saltyTank .st-reef { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+#saltyTank .st-tank video { position: absolute; left: var(--x, 13%); bottom: var(--y, 5%); width: var(--w, 70%); aspect-ratio: 16 / 9; object-fit: cover;
+                            opacity: 0; transition: opacity .3s ease-in-out; filter: url(#st-reeflight); }
+#saltyTank .st-tank video.on { opacity: 1; }
+#saltyTank .st-tank video.top { z-index: 1; }
+/* 3D Salty (salty-tank-3d.mjs): fills the tank over the reef, under the sand front and shine. */
+#saltyTank .st-tank canvas.st-3d { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; display: block; }
+#saltyTank .st-tank.st-3d-on video { display: none; }
+/* Her layers stack inside the tank only, never over the glass and lamps outside it. */
+#saltyTank .st-tank { isolation: isolate; }
+/* Drawn over her by page order before .top existed; now they must say so. */
+#saltyTank .st-sandfront, #saltyTank .st-shine, #saltyTank .st-bubble { z-index: 2; }
+#saltyTank .st-tank video:not(.top) { transition: none; }
+#saltyTank .st-contact { position: absolute; left: 22%; width: 52%; bottom: 3%; height: 10%; pointer-events: none; mix-blend-mode: multiply;
+                         background: radial-gradient(closest-side, rgba(40, 20, 80, .55), rgba(40, 20, 80, 0)); }
+#saltyTank .st-sandfront { position: absolute; inset: 0; pointer-events: none; background: url(reef_inside.jpg) 0 0 / 100% 100%;
+                           -webkit-mask: linear-gradient(to bottom, transparent 92%, #000 94.5%); mask: linear-gradient(to bottom, transparent 92%, #000 94.5%); }
+#saltyTank .st-bubble { position: absolute; bottom: -4%; border-radius: 50%; pointer-events: none;
+                        border: 1px solid rgba(255,255,255,.75); background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.8), rgba(255,255,255,.08) 60%);
+                        animation: st-rise linear infinite; }
+@keyframes st-rise { 0% { transform: translate(0, 0); opacity: 0; } 8% { opacity: .9; } 85% { opacity: .8; }
+                     100% { transform: translate(var(--sway), calc(var(--h) * -1)); opacity: 0; } }
+#saltyTank .st-shine { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen;
+                       background: linear-gradient(115deg, transparent 0 18%, rgba(255,255,255,.14) 22%, transparent 30% 62%, rgba(255,255,255,.08) 66%, transparent 72%); }
+#saltyTank .st-glass { position: absolute; left: 28.91%; top: 30.42%; width: 42.29%; height: 44.58%; pointer-events: none;
+                       background: url(room.jpg) no-repeat; background-size: 236.5% 224.3%; background-position: 50.66% 54.94%;
+                       padding: .6%; box-sizing: border-box;
+                       -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+                       mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+#saltyTank .st-lamp { position: absolute; pointer-events: none; mix-blend-mode: screen; }
+#saltyTank .st-lamp.halo { left: 67%; top: 26%; width: 26%; height: 40%;
+                           background: radial-gradient(closest-side, rgba(255, 186, 110, .32), rgba(255, 186, 110, 0)); }
+#saltyTank .st-lamp.shade { left: 75.2%; top: 34.4%; width: 9.8%; height: 12.1%; clip-path: polygon(5% 0, 94% 0, 100% 100%, 0 100%);
+                            background: linear-gradient(to bottom, rgba(255, 212, 150, .22), rgba(255, 196, 120, .55)); }
+#saltyTank .st-lamp.rim { left: 75.6%; top: 45.3%; width: 9%; height: 2.4%; filter: blur(2px);
+                          background: radial-gradient(closest-side, rgba(255, 240, 205, .95), rgba(255, 200, 130, 0)); }
+#saltyTank .st-lamp.cone { left: 70%; top: 44.8%; width: 20%; height: 22%;
+                           background: radial-gradient(ellipse 50% 100% at 50% 7%, rgba(255, 192, 115, .5), rgba(255, 170, 90, .18) 55%, rgba(255, 170, 90, 0) 80%);
+                           -webkit-mask: linear-gradient(to bottom, transparent, #000 14%); mask: linear-gradient(to bottom, transparent, #000 14%); }
+#saltyTank .st-neon { position: absolute; left: 48.8%; top: 82.3%; transform: translate(-50%, -64%); white-space: nowrap;
+                      font: 3.2cqw/1 'Neonderthaw', cursive; color: #ffe6f3;
+                      text-shadow: 0 0 .03em #fff, 0 0 .08em #ff8cc6, 0 0 .18em #ff3d9a, 0 0 .4em #ff2d8a, 0 0 .8em #ff2d8a;
+                      animation: st-flicker 9s infinite; }
+#saltyTank .st-neonglow { position: absolute; left: 48.8%; top: 82.3%; width: 30%; height: 9%; transform: translate(-50%, -50%); pointer-events: none;
+                          background: radial-gradient(closest-side, rgba(255, 60, 150, .55), rgba(255, 60, 150, 0)); mix-blend-mode: screen;
+                          animation: st-flicker 9s infinite; }
+@keyframes st-flicker { 0%, 61%, 63.5%, 66%, 100% { opacity: 1; } 62%, 65% { opacity: .35; } 64% { opacity: .8; } }
+
+/* ---- RGB leg buttons (placed on the table legs by JS; pinned to the screen edges when the legs are off-screen) ---- */
+#saltyTank .st-leg { position: absolute; left: 0; top: 0; width: var(--size, 64px); height: var(--size, 64px); margin: 0; padding: 0;
+                     border: 0; border-radius: 50%; background: none; color: #fff; cursor: pointer; isolation: isolate;
+                     transform: translate(-50%, -50%); transition: opacity .25s, transform .15s; }
+#saltyTank .st-leg::before { content: ""; position: absolute; inset: -3px; border-radius: 50%; z-index: -2;
+                             background: conic-gradient(#ff2d55, #ff9f0a, #ffd60a, #30d158, #64d2ff, #0a84ff, #bf5af2, #ff2d55);
+                             animation: st-spin 3.2s linear infinite; filter: drop-shadow(0 0 8px rgba(255, 80, 200, .65)); }
+#saltyTank .st-leg::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; z-index: -1;
+                            background: radial-gradient(circle at 35% 30%, rgba(70, 60, 90, .92), rgba(12, 10, 20, .94) 70%);
+                            box-shadow: inset 0 0 10px rgba(0, 0, 0, .8); }
+#saltyTank .st-leg span { font: 700 calc(var(--size, 64px) * .25)/1 system-ui, sans-serif; letter-spacing: .04em; text-transform: lowercase;
+                          text-shadow: 0 0 6px #fff, 0 0 12px #ff5fd2; }
+#saltyTank .st-leg:active { transform: translate(-50%, -50%) scale(.92); }
+#saltyTank .st-leg.live::before { animation-duration: .9s; filter: drop-shadow(0 0 14px rgba(255, 60, 160, .95)); }
+#saltyTank .st-leg.live span { text-shadow: 0 0 6px #fff, 0 0 14px #ff2d55; }
+#saltyTank .st-leg[disabled] { opacity: .45; }
+#saltyTank.typing .st-leg { opacity: 0; pointer-events: none; }
+/* Built with Llama + AI line (licence and AUP duty): placed by placeLegs(), opens SALTY_NOTICES.txt. */
+/* ☠️ Centred on the buttons it touched the neon sign's "y" tail (2 Nov phone still): it hangs a little lower. */
+#saltyTank .st-credit { position: absolute; left: 50%; top: 88%; transform: translate(-50%, -22%); z-index: 3; white-space: nowrap;
+                        display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 10px;
+                        font: 600 13px/1.15 system-ui, sans-serif; letter-spacing: .03em; color: #f3ece6; text-align: center;
+                        text-decoration: none; text-shadow: 0 1px 3px rgba(0, 0, 0, .85); -webkit-tap-highlight-color: transparent; }
+#saltyTank .st-credit span { font-weight: 400; font-size: 11px; opacity: .78; }
+#saltyTank.typing .st-credit { opacity: 0; pointer-events: none; }
+
+/* ---- Typing: glass RGB tile + RGB keyboard ---- */
+#saltyTank .st-panel { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 10px;
+                       /* --st-bar-*: Android's back/home bar, measured by salty-tank.mjs (the WebView draws under it) */
+                       padding: 10px calc(10px + var(--st-bar-r, 0px)) calc(10px + var(--st-bar-b, 0px)) calc(10px + var(--st-bar-l, 0px));
+                       animation: st-hue 6s linear infinite; transform: translateY(105%); transition: transform .35s cubic-bezier(.2, .8, .2, 1); }
+#saltyTank.typing .st-panel { transform: none; }
+#saltyTank:not(.typing) .st-panel { animation-play-state: paused; }
+/* Room for the scene above: the tank slides up (portrait) or left (landscape) while she's being typed to. */
+@media (orientation: portrait) { #saltyTank.typing .st-stage { transform: translate(-50%, calc(-53% - 26vh)) scale(.86); } }
+@media (orientation: landscape) {
+  #saltyTank .st-panel { left: auto; top: 0; width: min(52vw, 560px); justify-content: flex-end; transform: translateX(105%); }
+  #saltyTank.typing .st-stage { transform: translate(calc(-50% - min(26vw, 280px)), -53%) scale(.9); }
+}
+
+#saltyTank .st-tile { position: relative; border-radius: 18px; padding: 12px 44px 12px 14px; min-height: 64px;
+                      background: rgba(18, 12, 30, .42); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3);
+                      box-shadow: 0 0 18px hsl(var(--st-h) 100% 60% / .45), inset 0 1px 0 rgba(255, 255, 255, .25); }
+/* the RGB edge: a conic gradient turning with the hue, masked down to a 2px ring */
+#saltyTank .st-tile::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 2px; pointer-events: none;
+                              background: conic-gradient(from calc(var(--st-h) * 1deg), #ff2d55, #ffd60a, #30d158, #64d2ff, #bf5af2, #ff2d55);
+                              -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+                              mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+#saltyTank .st-her { max-height: 22vh; overflow-y: auto; color: #fff; margin-bottom: 8px; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+@media (orientation: landscape) { #saltyTank .st-her { max-height: 30vh; } }
+#saltyTank .st-her:empty { display: none; }
+#saltyTank .st-her b { color: hsl(var(--st-h) 100% 72%); font-weight: 700; }
+#saltyTank .st-you { color: rgba(255, 255, 255, .7); font-size: 13px; margin-bottom: 4px; }
+#saltyTank .st-you:empty { display: none; }
+#saltyTank .st-line { min-height: 24px; font-size: 17px; color: #fff; word-break: break-word; }
+#saltyTank .st-line .st-placeholder { color: rgba(255, 255, 255, .45); }
+#saltyTank .st-caret { display: inline-block; width: 2px; height: 1.1em; vertical-align: -.15em; margin-left: 1px;
+                       background: hsl(var(--st-h) 100% 65%); box-shadow: 0 0 6px hsl(var(--st-h) 100% 60%); animation: st-blink 1s steps(1) infinite; }
+@keyframes st-blink { 50% { opacity: 0; } }
+#saltyTank .st-close { position: absolute; right: 8px; top: 8px; width: 30px; height: 30px; border: 0; border-radius: 50%;
+                       background: rgba(255, 255, 255, .12); color: #fff; font-size: 18px; line-height: 30px; padding: 0; }
+#saltyTank .st-dots::after { content: "..."; animation: st-dots 1.2s steps(4) infinite; display: inline-block; width: 1.2em; overflow: hidden; vertical-align: bottom; }
+@keyframes st-dots { from { width: 0; } to { width: 1.2em; } }
+
+/* Gaming keyboard: dark keys, legends and underglow running a rainbow wave across the columns. */
+#saltyTank .st-kb { display: flex; flex-direction: column; gap: 7px; padding: 9px 6px; border-radius: 16px;
+                    background: linear-gradient(#0d0b12, #07060a); box-shadow: 0 0 22px hsl(var(--st-h) 100% 55% / .35), inset 0 1px 0 rgba(255, 255, 255, .06); }
+#saltyTank .st-row { display: flex; gap: 5px; justify-content: center; }
+#saltyTank .st-key { --c: hsl(calc(var(--st-h) + var(--i, 0) * 24) 100% 62%);
+                     /* a tenth of the row less its share of the 9 gaps, so 10 keys always fit; wider keys share the rest */
+                     flex: 0 0 calc((100% - 45px) / 10); min-width: 0; height: clamp(40px, 6.2vh, 52px); border-radius: 8px; padding: 0;
+                     border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
+                     background: linear-gradient(#1c1a24, #121018); color: var(--c);
+                     font: 600 18px/1 system-ui, sans-serif; text-shadow: 0 0 6px var(--c);
+                     box-shadow: 0 2px 0 #000, 0 3px 10px -2px var(--c); transition: transform .05s; }
+@media (orientation: landscape) { #saltyTank .st-key { height: clamp(34px, 9vh, 46px); font-size: 16px; } }
+#saltyTank .st-key.wide { flex: 1 1 0; font-size: 14px; }
+#saltyTank .st-key.space { flex: 4 1 0; }
+#saltyTank .st-key.send { flex: 2 1 0; font-size: 15px; color: #fff; text-shadow: 0 0 6px #fff;
+                          background: linear-gradient(135deg, hsl(var(--st-h) 90% 45%), hsl(calc(var(--st-h) + 90) 90% 45%)); }
+#saltyTank .st-key.on { background: color-mix(in srgb, var(--c) 30%, #121018); }
+#saltyTank .st-key.down { transform: translateY(2px); box-shadow: 0 0 0 #000, 0 0 16px var(--c); background: color-mix(in srgb, var(--c) 35%, #121018); }
+
+/* ---- Hidden-tank pill (long-press the neon sign to look at Veridity's own screens) ---- */
+.st-return { position: fixed; right: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); z-index: 100; border: 0; border-radius: 999px;
+             padding: 8px 14px; background: #d9578f; color: #fff; font: 600 14px system-ui, sans-serif; box-shadow: 0 0 12px rgba(255, 60, 150, .7); }
+
+@media (prefers-reduced-motion: reduce) {
+  #saltyTank .st-leg::before, #saltyTank .st-panel { animation-duration: 20s; }
+  #saltyTank .st-bubble { animation: none; opacity: 0; }
+}

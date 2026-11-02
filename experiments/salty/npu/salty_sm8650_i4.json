@@ -1,0 +1,18 @@
+{
+  "model_id": "/mnt/d/MuseTest/experiments/salty/train/runs/salty-v7a/merged",
+  "backend": "qualcomm",
+  "soc_model": "SM8650",
+  "weight_quantization_recipe": "/mnt/d/MuseTest/experiments/salty/npu/llama_int4_channelwise.json",
+  "k_ts_idx": 3,
+  "v_ts_idx": 2,
+  "use_float_input_output_normalizer": false,
+  "skip_mlir_passes": true,
+  "prefill_lengths": [128],
+  "cache_length": 1024,
+  "max_calibration_decode_steps": 32,
+  "calibration_dataset_format": "jsonl",
+  "calibration_eval_task_names": ["salty"],
+  "use_profiler_based_calibration": false,
+  "enable_min_max_calibration_update": true,
+  "calibration_range_scale": 1.0
+}

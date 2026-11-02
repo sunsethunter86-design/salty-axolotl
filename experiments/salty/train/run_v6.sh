@@ -1,0 +1,3 @@
+set -e
+for n in v6a v6b; do bash /mnt/d/MuseTest/experiments/salty/train/run_axolotl.sh train salty_lora_$n.yml > /mnt/d/MuseTest/experiments/salty/train/$n.log 2>&1; echo $n trained; done
+source ~/salty-train-venv/bin/activate; export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1; cd /mnt/d/MuseTest/experiments/salty/train; python pc_eval.py PC-v6a=runs/salty-v6a PC-v6b=runs/salty-v6b > pc_eval_v6.log 2>&1; echo V6_DONE

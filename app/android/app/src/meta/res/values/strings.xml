@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Hackathon sandbox (-PvfMetaId): unmistakable beside Veridity and her lab builds. -->
+    <string name="app_name">Salty (Meta Llama)</string>
+    <string name="title_activity_main">Salty (Meta Llama)</string>
+    <string name="package_name">com.veridity.flow.local.meta</string>
+    <string name="custom_url_scheme">com.veridity.flow.local.meta</string>
+</resources>

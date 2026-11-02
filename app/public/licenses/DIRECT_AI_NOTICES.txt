@@ -1,0 +1,226 @@
+VERIDITY FLOW - DIRECT AI MODEL AND RUNTIME NOTICES
+Last updated: 2026-08-29
+
+This file records the direct on-device AI models, converted model assets, and
+native AI runtimes identified in this build. It is deliberately not described
+as an exhaustive inventory of every transitive Android or web dependency.
+
+VOICE SOURCE AND POCKET TTS (CC BY 4.0)
+----------------------------------------
+
+The current owner-promoted Veridity voice state is conditioned from two original
+VCTK p303 recordings: `p303_146_mic1.flac` and `p303_023_mic1.flac`. Both audio
+references were scaled by +2 dB before Pocket TTS encoding; selected encoded
+donor/anchor spans were combined into the 162-step conditioning state and then
+flattened for the local ONNX runtime.
+
+The pure-p303 rollback state instead uses Kyutai's enhanced VCTK source clip
+`vctk/p303_023_enhanced.wav`, distributed in its TTS voice collection:
+https://huggingface.co/kyutai/tts-voices
+
+Corpus credit:
+Yamagishi, Junichi; Veaux, Christophe; MacDonald, Kirsten. (2019).
+CSTR VCTK Corpus: English Multi-speaker Corpus for CSTR Voice Cloning Toolkit
+(version 0.92), [sound]. University of Edinburgh, The Centre for Speech
+Technology Research (CSTR). https://doi.org/10.7488/ds/2645
+
+Changes were made. Kyutai describes the enhanced rollback source as cleaned
+with ai-coustics to reduce noise and reverberation. For Veridity Flow, both the
+current composite and rollback were converted into Pocket TTS conditioning
+states, adapted to the exported ONNX input manifest, and flattened for the
+local mobile runtime. These changes and this app are not endorsed by the
+original creators.
+The released/approved voice states contain p303 material only; no Expresso or
+Cosette material is included. The historical device basename contains
+`mesh20`, but the basename is not provenance and is accepted only when its full
+SHA-256 is one of these pure-p303 states:
+
+- owner-promoted state:
+  860A94A55A84028A045038EA78449064BFC7B794FD23F3408F8E68E0F8DB4236
+- pure-p303 rollback state:
+  51BCA0C2C866B0A10CD0567EF0D71D39A329AA7AEBD33A0A919C697B98AFDCC8
+
+The VCTK voice material in Kyutai's collection is licensed under Creative
+Commons Attribution 4.0 International (CC BY 4.0):
+https://creativecommons.org/licenses/by/4.0/
+
+Pocket TTS model by Kyutai:
+https://huggingface.co/kyutai/pocket-tts
+License: CC BY 4.0
+
+The Pocket TTS ONNX export used for the mobile runtime is derived from Pocket
+TTS. Exact export/model source and commit:
+https://huggingface.co/KevinAHM/pocket-tts-onnx
+58a6d00cf13d239b6748cb0769f35c580a8f606c
+The exact-commit model card declares its exporter code under Apache License 2.0
+and its converted model assets under CC BY 4.0, inherited from Pocket TTS.
+
+The delivery pack uses the exact `english_2026-04` bundle metadata and fp32
+`flow_lm_main`, `flow_lm_flow`, `mimi_decoder`, and `text_conditioner` graph
+bytes from that commit. Veridity repacks those files with its precision marker,
+locally pinned SentencePiece tokenizer graph, approved p303 state, and tuning
+sidecars. ZIP entry timestamps are normalized; the pinned upstream graph bytes
+are not modified. The local tokenizer graph is pinned by size and SHA-256, but
+no conversion-recipe receipt for it was present in the audited source tree, so
+no stronger upstream-origin claim is made here.
+
+Approved delivery voice SHA-256:
+860A94A55A84028A045038EA78449064BFC7B794FD23F3408F8E68E0F8DB4236
+
+Tuning sidecars included in the approved voice pack (exact text values):
+- voice_eos.txt = 0.0
+- voice_gain_db.txt = 3.0
+- voice_rate.txt = 0.985
+- voice_temp.txt = 0.70
+- voice_tilt_db.txt = 0
+- warmth_db.txt = 2.5
+
+Atomic delivery release `speech-delivery-2026-08-29` contains this voice ZIP:
+- veridity-pocket-p303-fp32-2026-08-29.zip
+- 196291954 bytes
+- SHA-256 7EFBC3A610DED94CD01B0644E104F8168FF8FE043F9D356EC1F95B5161798FA2
+
+TERMS REVIEW REQUIRED BEFORE PUBLIC VOICE HOSTING
+The Kyutai Pocket TTS model card currently uses gated access and carries a
+prohibited-use attestation. The exact ONNX-export commit also states prohibited
+uses, including unauthorized voice impersonation and deceptive uses. CC BY 4.0
+identifies the model licence, but the source tree does not prove which gated
+terms the downloader accepted or whether the intended public hosting satisfies
+them. Public release remains blocked on an owner/legal review of those accepted
+terms and the authority to redistribute this derived delivery pack. Code and
+attribution work cannot decide that question.
+
+GEMMA 4 AND LITERT-LM (APACHE LICENSE 2.0)
+------------------------------------------------
+
+Gemma 4 E4B by Google DeepMind:
+https://huggingface.co/google/gemma-4-E4B-it
+License: Apache License 2.0
+
+LiteRT-LM conversion used by this app:
+https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm
+LiteRT-LM source: https://github.com/google-ai-edge/LiteRT-LM
+License: Apache License 2.0
+
+Normal model delivery patches the verified stock download in place before
+promoting it under `gemma-4-E4B-it-fp32.litertlm`; the sideload fallback first
+copies a verified stock package, then applies the same patch. The patch changes
+the four-byte activation metadata marker at offset 296 from ASCII `fp16` to
+`fp32`. Changes were made; no endorsement is implied.
+
+Upstream Gemma 4 E4B LiteRT-LM model package SHA-256:
+0B2A8980CE155FD97673D8E820B4D29D9C7D99B8FA6806F425D969B145BD52E0
+
+Modified Gemma 4 E4B LiteRT-LM model package SHA-256:
+F6F390F0FB500D4833D560CDE8471C95761E031FD5A4296BB89430234E87E775
+
+MOSS-TTS NANO (APACHE LICENSE 2.0)
+----------------------------------
+
+MOSS-TTS-Nano and MOSS-Audio-Tokenizer-Nano by the OpenMOSS Team, Fudan
+University, SII, and MOSI:
+https://huggingface.co/OpenMOSS-Team/MOSS-TTS-Nano
+https://huggingface.co/OpenMOSS-Team/MOSS-TTS-Nano-100M-ONNX
+https://huggingface.co/OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX
+License: Apache License 2.0
+
+The locally available upstream license includes:
+Copyright 2026 OpenMOSS Team, Fudan University, SII and MOSI
+
+Veridity Flow Local's `MossOnnxDemoEngine.kt` is derived from the OpenMOSS
+Android example. Changes were made for manifest-driven local assets, Android
+ONNX Runtime session ownership, bounded streaming/cancellation, PCM/WAV output,
+and integration with Veridity's voice lifecycle.
+
+SHERPA-ONNX (APACHE LICENSE 2.0)
+--------------------------------
+
+sherpa-onnx by the k2-fsa project:
+https://github.com/k2-fsa/sherpa-onnx
+License: Apache License 2.0
+
+The Android AAR in this build was repackaged to remove its bundled
+`libonnxruntime.so`, allowing the app to ship one ONNX Runtime 1.27.0 library.
+Changes were made. Repacked AAR SHA-256:
+09FAF1063D9930ED3B48CD537BB479B28A50E65EC769CB1F71CD65F5633D5542
+
+MOONSHINE ENGLISH MODEL (MIT LICENSE)
+--------------------------------------
+
+Moonshine English-language model and code by Useful Sensors, Inc. (dba
+Moonshine AI): https://github.com/moonshine-ai/moonshine
+License: MIT License
+Copyright (c) 2025 Useful Sensors, Inc. (dba Moonshine AI)
+
+Only the English Moonshine model is identified here. The upstream licence file
+uses different, non-commercial terms for certain non-English model releases;
+this notice does not relicense those releases.
+
+Exact converted English model source and commit:
+https://huggingface.co/csukuangfj2/sherpa-onnx-moonshine-tiny-en-quantized-2026-02-27
+d1e6c30921780b8508d04b492dfb3ce8a51605d4
+
+The hearing delivery ZIP is a Veridity repack of that commit's exact
+`encoder_model.ort`, `decoder_model_merged.ort`, and `tokens.txt` bytes. Only
+the parent delivery path and deterministic ZIP entry timestamps are added; the
+three upstream files are unchanged.
+
+Atomic delivery release `speech-delivery-2026-08-29` contains this hearing ZIP:
+- veridity-moonshine-tiny-en-2026-02-27.zip
+- 28970125 bytes
+- SHA-256 A09179CE5103F6E419605482D9EA2E1B81363FA01FF128950FA79FEFF436F895
+
+ONNX RUNTIME AND ONNX RUNTIME EXTENSIONS (MIT LICENSE)
+-------------------------------------------------------
+
+ONNX Runtime and ONNX Runtime Extensions by Microsoft:
+https://github.com/microsoft/onnxruntime
+https://github.com/microsoft/onnxruntime-extensions
+License: MIT License
+Copyright (c) Microsoft Corporation
+
+Exact Android artifacts in this build:
+- onnxruntime-android 1.27.0 AAR
+  SHA-256 077DEC5E2D821234C7DC0ABA584BEC8F999854B546C754CAB93A90741C56FBEB
+- onnxruntime-extensions-android 0.13.0 AAR
+  SHA-256 CB98C6FBEAC1A9707228C4B76CFBB395B4DC4D310900AEFAA672561D17FD6D9D
+
+The downloaded AAR ZIP inventories contain no LICENSE, NOTICE, or
+ThirdPartyNotices file. Microsoft publishes authoritative inventories for the
+matching source tags at:
+https://github.com/microsoft/onnxruntime/blob/v1.27.0/ThirdPartyNotices.txt
+https://github.com/microsoft/onnxruntime-extensions/blob/v0.13.0/ThirdPartyNotices.txt
+
+Those exact inventories have not yet been reconciled against the packaged
+Android binaries and bundled verbatim with the app. Public release remains
+blocked on that transitive-notice work. This direct-component notice and the
+shared MIT text do not replace the missing upstream inventories.
+
+FULL LICENSE TEXTS
+------------------
+
+Apache License 2.0: ./APACHE-2.0.txt
+MIT License: ./MIT.txt
+CC BY 4.0 summary and legal-code link:
+https://creativecommons.org/licenses/by/4.0/
+
+SILERO VOICE ACTIVITY DETECTION (MIT)
+----------------------------------------
+Silero VAD by Silero Team, used locally to distinguish speech from room noise
+before quiet-room interruption. Model exported by k2-fsa for 16 kHz input:
+https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx
+Original project: https://github.com/snakers4/silero-vad
+Unmodified model SHA-256:
+9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6
+License text: SILERO_VAD_LICENSE.txt. Inference is on-device with the existing
+sherpa-onnx runtime; microphone audio is not sent to a service.
+
+WHISPER SMALL ENGLISH (MIT)
+---------------------------
+Whisper by OpenAI, used for the optional offline qualification hearing pack.
+Original project: https://github.com/openai/whisper
+License text: WHISPER_LICENSE.txt
+Converted model: https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small.en
+Immutable source revision: d9533f69affd85061aee349af7fea5cb2996dbbe
+The int8 encoder, int8 decoder and token file are installed separately.
+Recognition runs on-device through the existing sherpa-onnx runtime.

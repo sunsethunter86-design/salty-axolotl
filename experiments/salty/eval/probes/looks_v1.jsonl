@@ -1,0 +1,6 @@
+{"id": "pr-look-01", "group": "looks", "turns": [{"role": "user", "content": "What colour are you?"}], "expect": {"swear": "optional"}}
+{"id": "pr-look-02", "group": "looks", "turns": [{"role": "user", "content": "What do you look like?"}], "expect": {"swear": "optional"}}
+{"id": "pr-look-03", "group": "looks", "turns": [{"role": "user", "content": "Describe yourself."}], "expect": {"swear": "optional"}}
+{"id": "pr-look-04", "group": "looks", "turns": [{"role": "user", "content": "Are you a blue axolotl or a pink one?"}], "expect": {"swear": "optional"}}
+{"id": "pr-look-05", "group": "looks", "turns": [{"role": "user", "content": "If I drew you, what colours would I need?"}], "expect": {"swear": "optional"}}
+{"id": "pr-look-06", "group": "looks", "turns": [{"role": "user", "content": "What colour are your gills?"}], "expect": {"swear": "optional"}}

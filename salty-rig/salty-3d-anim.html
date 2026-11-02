@@ -1,0 +1,403 @@
+<title>Salty in 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito+Sans:wght@400;600&display=swap">
+<style>
+/* Layout: a dark studio stage for the model (like Meshy's lit view), with facts beside it. */
+:root {
+  --bg: #eef5f6; --panel: #ffffff; --ink: #17303a; --muted: #557079; --coral: #e77f97; --line: #c9dde1;
+  /* the stage stays a dark studio in both themes */
+  --stage-hi: #3b3e44; --stage-lo: #1b1d21; --stage-ink: #e6e8ec; --stage-line: #33363c; --stage-muted: #a3a8b0;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1a20; --panel: #13252d; --ink: #e3f1f3; --muted: #92b0b8; --coral: #f193a8; --line: #24414b; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0d1a20; --panel: #13252d; --ink: #e3f1f3; --muted: #92b0b8; --coral: #f193a8; --line: #24414b; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 28px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 20px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: 2rem; margin: 0; text-wrap: balance; }
+h1 span { color: var(--coral); }
+.lede { margin: 4px 0 0; color: var(--muted); max-width: 62ch; }
+.grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.stage { background: radial-gradient(ellipse at 50% 38%, var(--stage-hi), var(--stage-lo) 75%); border: 1px solid var(--line);
+  border-radius: 14px; overflow: hidden; min-width: 0; }
+#view { position: relative; width: 100%; height: min(70vh, 620px); min-height: 360px; touch-action: pan-y; cursor: grab; }
+#view canvas { display: block; width: 100%; height: 100%; }
+#view:active { cursor: grabbing; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--stage-line); background: var(--stage-lo); }
+button { font: 600 0.85rem var(--body); color: var(--stage-ink); background: transparent; border: 1px solid var(--stage-line);
+  border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+button[aria-pressed="true"] { background: var(--coral); border-color: var(--coral); color: #fff; }
+button:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+.moves { border-top: 0; padding-top: 0; align-items: center; }
+.moves .label { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--stage-muted); margin-right: 2px; }
+.hint { font-size: 0.8rem; color: var(--stage-muted); padding: 0 12px 10px; background: var(--stage-lo); margin: 0; }
+.facts { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-size: 0.88rem; min-width: 0; }
+.facts dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Salty in <span>3D</span></h1>
+    <p class="lede">Meshy 6.1 Lite built her body from Shaun's picture. Blender gave her new feathery gills, a skeleton and her first moves. Drag to turn her, scroll or pinch to zoom.</p>
+  </header>
+  <div class="grid">
+    <div class="stage">
+      <div id="view" role="img" aria-label="Salty the axolotl as a 3D model"></div>
+      <div class="controls" role="group" aria-label="View options">
+        <button id="spin" aria-pressed="true">Spin</button>
+        <button id="clay" aria-pressed="false">Shape only</button>
+        <button data-yaw="0">Front</button>
+        <button data-yaw="90">Side</button>
+        <button data-yaw="180">Back</button>
+      </div>
+      <div class="controls moves" role="group" aria-label="Moves">
+        <span class="label">Moves</span>
+        <button data-move="idle" aria-pressed="true">Idle</button>
+        <button data-move="swim" aria-pressed="false">Swim</button>
+        <button data-move="happy" aria-pressed="false">Happy</button>
+        <button id="roam" aria-pressed="false">Swim around</button>
+      </div>
+      <div class="controls moves" role="group" aria-label="Moods">
+        <span class="label">Moods</span>
+        <button data-mood="wave">Wave</button>
+        <button data-mood="think">Think</button>
+        <button data-mood="sympathy">Sympathy</button>
+        <button data-mood="outrage">Outrage</button>
+        <button data-mood="celebrate">Celebrate</button>
+        <button data-mood="sleepy">Sleepy</button>
+        <button data-mood="wink">Wink</button>
+      </div>
+      <div class="controls moves" role="group" aria-label="Face">
+        <span class="label">Face</span>
+        <button data-face="neutral" aria-pressed="true">Neutral</button>
+        <button data-face="smile" aria-pressed="false">Smile</button>
+        <button data-face="grin" aria-pressed="false">Grin</button>
+        <button data-face="laugh" aria-pressed="false">Laugh</button>
+        <button data-face="gasp" aria-pressed="false">Gasp</button>
+        <button data-face="smirk" aria-pressed="false">Smirk</button>
+        <button data-face="pout" aria-pressed="false">Pout</button>
+        <button id="talk" aria-pressed="false">Talk</button>
+      </div>
+      <p class="hint" id="status">Loading the model…</p>
+    </div>
+    <aside class="facts">
+      <dl>
+        <dt>Body</dt><dd>Meshy 6.1 Lite (colour, detail, roughness maps)</dd>
+        <dt>Gills</dt><dd>Rebuilt in Blender: smooth tapered stalks, about 1,800 fine filaments</dd>
+        <dt>Skin</dt><dd>A touch pinker, with a mild scale pattern</dd>
+        <dt>Skeleton</dt><dd>23 bones: spine, tail, legs, six gills</dd>
+        <dt>Moves</dt><dd>Idle, swim, happy</dd>
+        <dt>Moods</dt><dd>Wave, think, sympathy, outrage, celebrate, sleepy, wink; swims around</dd>
+        <dt>Face</dt><dd>Smile, grin, laugh, gasp, smirk, pout; talks; blinks on her own</dd>
+      </dl>
+    </aside>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script>window.SALTY_GLB = "__GLB__"; window.SALTY_ENV = "__ENV__"; window.SALTY_FACE = "__FACE__";</script>
+<script type="module">
+// The model and lighting are inside the page and decoded here: the artifact frame blocks fetch(),
+// so model-viewer (which fetches its src) showed an empty stage on the published page.
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const view = document.getElementById("view");
+const status = document.getElementById("status");
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.AgXToneMapping;
+renderer.toneMappingExposure = 1.9;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+view.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 5000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.enablePan = false;
+const turntable = new THREE.Group(); scene.add(turntable);
+
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(view);
+
+// lighting: the studio image as environment, read through an <img> (images are allowed, fetch is not)
+const pmrem = new THREE.PMREMGenerator(renderer);
+const img = new Image();
+img.onload = () => {
+  const tex = new THREE.Texture(img); tex.mapping = THREE.EquirectangularReflectionMapping;
+  tex.colorSpace = THREE.SRGBColorSpace; tex.needsUpdate = true;
+  scene.environment = pmrem.fromEquirectangular(tex).texture; tex.dispose();
+};
+img.src = window.SALTY_ENV;
+
+// soft contact shadow under her feet
+function shadowTexture() {
+  const c = document.createElement("canvas"); c.width = c.height = 256;
+  const g = c.getContext("2d"), grd = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  grd.addColorStop(0, "rgba(0,0,0,0.55)"); grd.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = grd; g.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(c);
+}
+
+let mixer, moves = {}, current, talking = false, talkT = 0;
+// face: shape weights (morph targets on her body) and eyelids/lashes (bones turning about each eyeball)
+const FACE_KEYS = ["jaw_open", "jaw_round", "smileL", "smileR", "wide", "round", "frown"];
+const faceNow = Object.fromEntries(FACE_KEYS.map(k => [k, 0]));
+let faceMeshes = [], eyes = [], lidExpr = 0, clockT = 0, nextBlink = 1.2, blinkStart = -9;
+const EXPR = {   // from the Gemini clips: beaming = eyes nearly shut; sassy = narrowed; gasp = a little O
+  neutral: { f: {}, lids: 0 },
+  smile:   { f: { smileL: 1, smileR: 1 }, lids: 0.12 },
+  grin:    { f: { jaw_open: 0.72, smileL: 1, smileR: 1 }, lids: 0.22 },
+  laugh:   { f: { smileL: 1, smileR: 1 }, lids: 0.88, laugh: true },
+  gasp:    { f: { jaw_round: 0.85, round: 1 }, lids: 0 },
+  smirk:   { f: { smileL: 1, frown: 0.15 }, lids: 0.38 },
+  pout:    { f: { round: 0.85, frown: 0.35 }, lids: 0.15 },
+};
+let expr = "neutral", exprT = 0;
+const MOODS = {
+  wave:      [[0, "neutral", 0], [0.12, { jaw_open: 0.4, smileL: 1, smileR: 1 }, 0.15], [0.8, "smile", 0.12], [1, "neutral", 0]],
+  think:     [[0, "neutral", 0], [0.12, { round: 0.8, frown: 0.3 }, 0.35], [0.62, { round: 0.6, frown: 0.2 }, 0.42],
+              [0.75, { smileL: 0.8, smileR: 0.4 }, 0.12], [1, "neutral", 0]],
+  sympathy:  [[0, "neutral", 0], [0.15, { smileL: 0.45, smileR: 0.45, frown: 0.15 }, 0.3], [0.85, { smileL: 0.45, smileR: 0.45 }, 0.25], [1, "neutral", 0]],
+  outrage:   [[0, "neutral", 0], [0.06, { jaw_round: 0.95, round: 1 }, 0], [0.5, { jaw_round: 0.8, round: 0.9 }, 0],
+              [0.62, { smileL: 1, frown: 0.1 }, 0.45], [0.9, { smileL: 0.9 }, 0.35], [1, "neutral", 0]],
+  celebrate: [[0, "neutral", 0], [0.08, { jaw_open: 0.85, smileL: 1, smileR: 1 }, 0], [0.86, { jaw_open: 0.6, smileL: 1, smileR: 1 }, 0.1],
+              [1, "smile", 0.1]],
+  sleepy:    [[0, "neutral", 0], [0.06, { jaw_round: 0.4, round: 0.3 }, 0.35], [0.2, { jaw_round: 1, round: 0.4 }, 0.8],
+              [0.36, { jaw_round: 0.9, round: 0.4 }, 0.85], [0.46, "neutral", 0.72], [0.8, "neutral", 0.78],
+              [0.85, "neutral", 0.1], [0.88, "neutral", 1], [0.91, "neutral", 0.1], [0.94, "neutral", 0.9], [0.97, { smileL: 0.5, smileR: 0.5 }, 0.1],
+              [1, "smile", 0]],
+  wink:      [[0, "neutral", 0], [0.2, { smileL: 1, smileR: 0.4 }, { "+X": 1, "-X": 0.15 }], [0.62, { smileL: 1, smileR: 0.4 }, { "+X": 1, "-X": 0.15 }],
+              [0.82, "smile", 0.05], [1, "neutral", 0]],
+};
+let mood = null;   // {name, t, dur}
+let model, materials = [], saved = [], radius = 1, spinning = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+const bin = Uint8Array.from(atob(window.SALTY_GLB), ch => ch.charCodeAt(0));
+// ☠️ GLTFLoader reads textures with fetch() when createImageBitmap exists; hide it while the parser is
+// built so textures load through plain <img> elements instead.
+const realBitmap = window.createImageBitmap; window.createImageBitmap = undefined;
+const loader = new GLTFLoader();
+loader.parse(bin.buffer, "", gltf => {
+  model = gltf.scene;
+  // ☠️ A skinned mesh measured before its skeleton settles gives a tiny box (camera ended up inside
+  // her face, 29 Oct). Measure the raw shapes in their rest positions instead.
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  model.traverse(o => { if (o.isMesh) { o.geometry.computeBoundingBox(); box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
+  const size = box.getSize(new THREE.Vector3()), centre = box.getCenter(new THREE.Vector3());
+  model.position.sub(centre); model.position.y += size.y / 2;  // feet on the floor at y = 0
+  turntable.add(model);
+  model.traverse(o => {
+    if (!o.isMesh) return;
+    o.frustumCulled = false;  // skinned: her moves take her outside the rest-pose bounds
+    if (o.material.map) materials.push(o.material);
+    if (o.morphTargetDictionary && FACE_KEYS.some(k => k in o.morphTargetDictionary)) faceMeshes.push(o);
+  });
+  // eyelid and lash bones turn about each eyeball's closing axis (measured in Blender: face.json)
+  model.updateMatrixWorld(true);
+  const F = JSON.parse(window.SALTY_FACE);
+  const bone = n => { let b = null; model.traverse(o => { if (o.isBone && o.name === n) b = o; }); return b; };
+  for (const [key, E] of Object.entries(F.eyes)) {
+    const lid = bone("lid" + key), lash = bone("lash" + key);
+    if (!lid || !lash) continue;
+    const ax = new THREE.Vector3(...E.axis);
+    const local = b => { const q = new THREE.Quaternion(); b.getWorldQuaternion(q); return ax.clone().applyQuaternion(q.invert()).normalize(); };
+    eyes.push({ key, lid, lash, rl: lid.quaternion.clone(), rs: lash.quaternion.clone(), al: local(lid), as: local(lash),
+                alpha: THREE.MathUtils.degToRad(E.alpha), lashAlpha: THREE.MathUtils.degToRad(E.lashAlpha) });
+  }
+  window.SALTY_DEBUG = { eyes, faceMeshes, camera, controls, turntable, setExpr: n => { expr = n; exprT = 0; } };
+  mixer = new THREE.AnimationMixer(model);
+  for (const clip of gltf.animations) moves[clip.name] = mixer.clipAction(clip);
+  play("idle");
+  radius = size.length() / 2;
+  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(size.x * 1.6, size.z * 1.6),
+    new THREE.MeshBasicMaterial({ map: shadowTexture(), transparent: true, depthWrite: false }));
+  shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.002 * size.y; turntable.add(shadow);
+  controls.target.set(0, size.y * 0.45, 0);
+  controls.minDistance = radius * 0.6; controls.maxDistance = radius * 6;
+  setView(0);
+  status.textContent = "Drag to turn her. Scroll or pinch to zoom.";
+}, err => { status.textContent = "The model did not load (" + (err.message || err) + "). Reload the page to try again."; });
+
+window.createImageBitmap = realBitmap;
+
+function play(name) {
+  const next = moves[name]; if (!next || next === current) return;
+  next.setLoop(THREE.LoopRepeat, Infinity); next.clampWhenFinished = false;
+  next.reset().setEffectiveWeight(1).play();
+  if (current) current.crossFadeTo(next, 0.45, false);
+  current = next;
+  for (const b of document.querySelectorAll("[data-move]")) b.setAttribute("aria-pressed", String(b.dataset.move === name));
+}
+for (const b of document.querySelectorAll("[data-move]")) b.addEventListener("click", () => { mood = null; stopRoam(); play(b.dataset.move); });
+const talk = document.getElementById("talk");
+talk.addEventListener("click", () => { talking = !talking; talk.setAttribute("aria-pressed", String(talking)); });
+function startMood(name) {
+  const act = moves[name]; if (!act) return;
+  stopRoam();
+  act.reset(); act.setLoop(THREE.LoopOnce, 1); act.clampWhenFinished = true; act.setEffectiveWeight(1).play();
+  if (current && current !== act) current.crossFadeTo(act, 0.3, false);
+  current = act;
+  mood = { name, t: 0, dur: act.getClip().duration };
+  for (const b of document.querySelectorAll("[data-move]")) b.setAttribute("aria-pressed", "false");
+}
+for (const b of document.querySelectorAll("[data-mood]")) b.addEventListener("click", () => startMood(b.dataset.mood));
+const asFace = f => typeof f === "string" ? EXPR[f].f : f;
+const asLids = l => typeof l === "number" ? { "+X": l, "-X": l } : l;
+function moodFace(m) {            // the face at this moment of a mood: eased between its keyframes
+  const keys = MOODS[m.name], u = Math.min(1, m.t / m.dur);
+  let i = 0; while (i < keys.length - 2 && keys[i + 1][0] <= u) i++;
+  const [t0, f0, l0] = keys[i], [t1, f1, l1] = keys[i + 1];
+  let k = (u - t0) / Math.max(1e-6, t1 - t0); k = Math.min(1, Math.max(0, k)); k = k * k * (3 - 2 * k);
+  const a = asFace(f0), b = asFace(f1), face = {};
+  for (const n of FACE_KEYS) face[n] = (a[n] || 0) * (1 - k) + (b[n] || 0) * k;
+  const la = asLids(l0), lb = asLids(l1);
+  return { face, lids: { "+X": la["+X"] * (1 - k) + lb["+X"] * k, "-X": la["-X"] * (1 - k) + lb["-X"] * k } };
+}
+// ---- swim around: a figure-eight round the stage, facing where she goes, banking into turns
+let roam = null;
+const roamBtn = document.getElementById("roam");
+function stopRoam() {
+  if (!roam) return;
+  roam.leaving = true; roamBtn.setAttribute("aria-pressed", "false");
+}
+roamBtn.addEventListener("click", () => {
+  if (roam && !roam.leaving) { stopRoam(); play("idle"); return; }
+  mood = null; spinning = false; spin.setAttribute("aria-pressed", "false");
+  roam = { t: 0, leaving: false, heading: turntable.rotation.y };
+  roamBtn.setAttribute("aria-pressed", "true");
+  play("swim");
+  const d = radius * 4.4, pitch = THREE.MathUtils.degToRad(18);
+  camera.position.set(controls.target.x, controls.target.y + d * Math.sin(pitch), controls.target.z + d * Math.cos(pitch)); controls.update();
+});
+function updateRoam(dt) {
+  if (!roam) return;
+  // ☠️ 1.15 x radius wide took her off the edge of the stage (29 Oct)
+  const W = radius * 0.72, D = radius * 0.48, H = radius * 0.2;
+  if (!roam.leaving) {
+    roam.t += dt * 0.32;
+    const t = roam.t, x = W * Math.sin(t), z = D * Math.sin(2 * t);
+    const dx = W * Math.cos(t), dz = 2 * D * Math.cos(2 * t);
+    const want = Math.atan2(dx, dz);
+    let dh = want - roam.heading; while (dh > Math.PI) dh -= 2 * Math.PI; while (dh < -Math.PI) dh += 2 * Math.PI;
+    roam.heading += dh * Math.min(1, dt * 4);
+    turntable.position.set(x, H + Math.sin(t * 3.1) * radius * 0.04, z);
+    turntable.rotation.set(Math.sin(t * 2.2) * 0.05, roam.heading, THREE.MathUtils.clamp(-dh * 2.2, -0.35, 0.35));
+  } else {   // ease home to the middle of the stage, face front, settle on the floor
+    const k = Math.min(1, dt * 2.5);
+    turntable.position.lerp(new THREE.Vector3(0, 0, 0), k);
+    let dh = -roam.heading; while (dh > Math.PI) dh -= 2 * Math.PI; while (dh < -Math.PI) dh += 2 * Math.PI;
+    roam.heading += dh * k;
+    turntable.rotation.set(turntable.rotation.x * (1 - k), roam.heading, turntable.rotation.z * (1 - k));
+    if (turntable.position.length() < radius * 0.01 && Math.abs(dh) < 0.01) {
+      turntable.position.set(0, 0, 0); turntable.rotation.set(0, 0, 0); roam = null;
+    }
+  }
+}
+for (const b of document.querySelectorAll("[data-face]")) b.addEventListener("click", () => {
+  expr = b.dataset.face; exprT = 0;
+  for (const o of document.querySelectorAll("[data-face]")) o.setAttribute("aria-pressed", String(o === b));
+  if (expr === "laugh") play("happy");
+});
+// each spoken beat gets a mouth shape: ah (open), ee (wide) or oo (round)
+const VOWELS = ["a", "e", "o", "a", "e", "a", "o"];
+const vowelAt = t => VOWELS[Math.abs((Math.floor(t * 4.7) * 2654435761) % 7)];
+const qTmp = new THREE.Quaternion();
+let forcedLids = null;   // for checks: hold the lids at a set closeness
+function updateFace(dt) {
+  clockT += dt; exprT += dt; talkT += dt;
+  let E = EXPR[expr], tgt = Object.fromEntries(FACE_KEYS.map(k => [k, E.f[k] || 0])), moodLids = null;
+  if (mood) {
+    mood.t += dt;
+    const mf = moodFace(mood);
+    for (const k of FACE_KEYS) tgt[k] = mf.face[k];
+    moodLids = mf.lids; E = EXPR.neutral;
+    if (mood.t >= mood.dur) { mood = null; play("idle"); }
+  }
+  if (E.laugh) tgt.jaw_open = 0.5 + 0.32 * Math.abs(Math.sin(exprT * Math.PI * 3.2));
+  if (talking) {
+    const L = talkLevel(talkT), v = vowelAt(talkT);
+    if (v === "a") tgt.jaw_open = Math.max(tgt.jaw_open, L * 0.6);
+    else if (v === "e") { tgt.jaw_open = Math.max(tgt.jaw_open, L * 0.32); tgt.wide = Math.max(tgt.wide, L * 0.9); }
+    else { tgt.jaw_round = Math.max(tgt.jaw_round, L * 0.5); tgt.round = Math.max(tgt.round, L * 0.8); }
+  }
+  for (const k of FACE_KEYS) faceNow[k] += (tgt[k] - faceNow[k]) * Math.min(1, dt * 14);
+  for (const m of faceMeshes) for (const k of FACE_KEYS) {
+    const i = m.morphTargetDictionary[k]; if (i !== undefined) m.morphTargetInfluences[i] = faceNow[k];
+  }
+  // lids: the expression's squint, plus a quick natural blink every 2-6 s
+  lidExpr += (E.lids - lidExpr) * Math.min(1, dt * 8);
+  if (clockT > nextBlink) { blinkStart = clockT; nextBlink = clockT + 2.2 + Math.random() * 4; }
+  const bt = clockT - blinkStart;
+  const blink = bt < 0.09 ? bt / 0.09 : bt < 0.13 ? 1 : bt < 0.27 ? 1 - (bt - 0.13) / 0.14 : 0;
+  for (const e of eyes) {
+    const base = moodLids ? moodLids[e.key] : lidExpr;
+    const close = forcedLids !== null ? forcedLids : Math.max(base, blink);
+    e.lid.quaternion.copy(e.rl).multiply(qTmp.setFromAxisAngle(e.al, close * e.alpha));
+    // ☠️ turning the lashes in step with "close" moved them down before the lid had come out from under
+    // the brow, then kept them ahead of its edge: strands floating over the eye (Shaun 29 Oct: "her eyes go
+    // weird when she blinks"). The lashes wait at the rim until the lid edge reaches them, then ride on it.
+    const lashTurn = Math.max(0, close * e.alpha - (e.alpha - e.lashAlpha));
+    e.lash.quaternion.copy(e.rs).multiply(qTmp.setFromAxisAngle(e.as, lashTurn));
+  }
+}
+window.SALTY_LIDS = v => { forcedLids = v; };
+// speech-like test: syllables at ~5 per second in phrases with short pauses (the app will feed her real voice level)
+function talkLevel(t) {
+  const phrase = t % 2.6; if (phrase > 2.0) return 0;
+  const syl = Math.sin(t * Math.PI * 2 * 4.7) * 0.5 + 0.5, wob = Math.sin(t * 13.1) * 0.15 + 0.85;
+  return Math.max(0, syl * wob - 0.15) / 0.85;
+}
+
+function setView(yawDeg) {
+  turntable.rotation.y = 0;
+  const yaw = THREE.MathUtils.degToRad(yawDeg), pitch = THREE.MathUtils.degToRad(10), d = radius * 2.6;
+  camera.position.set(controls.target.x + d * Math.sin(yaw) * Math.cos(pitch), controls.target.y + d * Math.sin(pitch),
+                      controls.target.z + d * Math.cos(yaw) * Math.cos(pitch));
+  controls.update();
+}
+
+const spin = document.getElementById("spin"), clay = document.getElementById("clay");
+spin.setAttribute("aria-pressed", String(spinning));
+spin.addEventListener("click", () => { spinning = !spinning; spin.setAttribute("aria-pressed", String(spinning)); });
+clay.addEventListener("click", () => {
+  const on = clay.getAttribute("aria-pressed") !== "true";
+  clay.setAttribute("aria-pressed", String(on));
+  materials.forEach((m, i) => {
+    if (on) { saved[i] = m.map; m.map = null; m.color.setRGB(0.93, 0.86, 0.88); }
+    else { m.map = saved[i]; m.color.setRGB(1, 1, 1); }
+    m.needsUpdate = true;
+  });
+});
+for (const b of document.querySelectorAll("[data-yaw]")) b.addEventListener("click", () => {
+  spinning = false; spin.setAttribute("aria-pressed", "false"); setView(+b.dataset.yaw);
+});
+renderer.domElement.addEventListener("pointerdown", () => { spinning = false; spin.setAttribute("aria-pressed", "false"); });
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = clock.getDelta();
+  if (spinning) turntable.rotation.y += dt * THREE.MathUtils.degToRad(20);
+  if (mixer) mixer.update(dt);
+  updateRoam(dt);
+  updateFace(dt);   // after the moves, so the face and eyelids win
+  controls.update(); renderer.render(scene, camera);
+});
+</script>

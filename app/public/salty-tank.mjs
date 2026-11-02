@@ -1,0 +1,557 @@
+// Hackathon (Meta Llama): Salty's tank, the home screen while the Salty mind is loaded.
+//
+// Self-contained on purpose: it draws over Veridity's own screens and drives them only through their
+// real controls (#micBtn, #textInput + #textForm, #homeStopBtn) and reads her state only from what they
+// already show (the .phone-shell classes and #homeReplyBody). So the mic, the crisis net, the helpline
+// guard and the turn machinery are exactly Veridity's; nothing here talks to the mind.
+//
+// app.js calls syncSaltyTank(true|false) once /health names the loaded mind file. The last answer is
+// remembered so a restart opens straight into the tank instead of flashing Veridity's screen first.
+
+import { onSaltyVoiceSounding, saltyVoiceSounding, saltyVoiceLevel, saltyNextSpeechViseme, saltyLegAction } from "./salty-mind.mjs";
+import { createSalty3D } from "./salty-tank-3d.mjs?v=20261102-teeth";
+
+const KEY = "vfl.saltyTank";
+const BASE = "./salty/";
+
+// Mood -> cut-out loop (salty-video/cutout.py). x/y/w line the wide clip up with the idle one.
+const MOODS = {
+  idle:  { clip: "idle_listen_cut" },
+  talk:  { clip: "talk_medium_cut" },
+  happy: { clip: "happy_wide_cut", x: "-4%", y: "-6%", w: "100%" },
+};
+// Pose match between the idle and talk loops (salty-video/pose_match.py, 28 Oct): for each idle
+// frame the talk frame whose silhouette and colour sit closest, and back. A switch starts the new loop
+// on the matched frame, so her head and body barely move under the cross-fade.
+const IDLE_TO_TALK = [28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,27,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,27,27,27,13,12,12,12,12,12,11,11,11,11,11,11,78,78,78,78,78,78,84,84,11,11,11,4,4,84,11,84,84,84,83,4,4,4,83,83,83,83,83,83,12,12,12,12,12,12,12,12,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,76,12,12,12,76,76,76,12,76,76,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,76,76,76,76,76,12,12,12,12,12,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,12,12,12,12,12,12,12,12,83,83,83,83,83,83,4,4,4,83,84,84,4,11,84,4,4,11,11,11,84,84,78,78,78,78,78,78,11,11,11,11,11,11,12,12,12,12,12,13,27,27,27,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,27,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28];
+const TALK_TO_IDLE = [391,391,391,392,407,28,36,36,36,50,168,168,251,183,204,221,221,221,221,221,221,221,221,221,167,167,261,383,383,204,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,221,204,383,383,261,167,167,221,221,221,221,221,221,221,221,221,204,183,251,168,168,50,36,36,36,28,407,392,391,391];
+const MATCH = { "idle>talk": IDLE_TO_TALK, "talk>idle": TALK_TO_IDLE };
+// Table legs in the room photo (1024 x 572): left leg x 297-335, right 690-728, button centres low on the legs.
+const LEGS = { left: 0.310, right: 0.692, y: 0.915 };
+
+const LETTERS = ["qwertyuiop", "asdfghjkl", "⇧zxcvbnm⌫", "?,␣.↵"];
+const SYMBOLS = ["1234567890", "@#$%&-+()/", "=*\"':;!?⌫", "abc,␣.↵"];
+
+let root = null;
+let state = null;
+
+function remembered() {
+  try { return localStorage.getItem(KEY) === "1"; } catch { return false; }
+}
+function remember(on) {
+  try { on ? localStorage.setItem(KEY, "1") : localStorage.removeItem(KEY); } catch { /* private mode: just no head start */ }
+}
+
+/** The one entry point app.js uses. Idempotent. */
+export function syncSaltyTank(on) {
+  remember(on);
+  if (on) mount();
+  else unmount();
+}
+
+function el(tag, cls, attrs = {}) {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  return node;
+}
+
+function mount() {
+  if (root || !document.body) return;
+  if (!document.querySelector("link[data-salty-tank]")) {
+    const css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261102-credit2`, "data-salty-tank": "" });
+    document.head.append(css);
+  }
+  root = el("div", "", { id: "saltyTank", role: "application", "aria-label": "Salty's tank" });
+  // No Veridity flash (Shaun, 30 Oct): the tank stylesheet loads async above, so
+  // for a split second the unstyled tank sat over Veridity's home screen and he
+  // saw it before she took over. The tank's own critical layout is inline from
+  // the first paint; salty-tank.css takes over identical values when it lands.
+  root.style.cssText = "position:fixed;inset:0;z-index:100;overflow:hidden;background:#1d1a17;color:#f3ece6";
+  root.innerHTML = `
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <filter id="st-reeflight" color-interpolation-filters="sRGB">
+        <feColorMatrix type="matrix" values=".90 0 0 0 0   0 .84 0 0 0   0 0 .96 0 .05   0 0 0 1 0"/>
+      </filter>
+    </svg>
+    <div class="st-bg"></div>
+    <div class="st-stage">
+      <img class="st-room" src="${BASE}room.jpg" alt="">
+      <div class="st-lamp halo"></div><div class="st-lamp cone"></div><div class="st-lamp shade"></div><div class="st-lamp rim"></div>
+      <div class="st-tank">
+        <img class="st-reef" src="${BASE}reef_inside.png" alt="">
+        <div class="st-contact"></div>
+        ${Object.entries(MOODS).map(([mood, m]) => `<video data-mood="${mood}" muted loop playsinline preload="auto" src="${BASE}loops/${m.clip}.webm"></video>`).join("")}
+        <div class="st-sandfront"></div>
+        <div class="st-shine"></div>
+      </div>
+      <div class="st-glass"></div>
+      <div class="st-neonglow"></div>
+      <div class="st-neon">Salty</div>
+    </div>
+    <button class="st-leg st-mic" type="button" aria-label="Mic"><span>mic</span></button>
+    <button class="st-leg st-txt" type="button" aria-label="Type to Salty"><span>txt</span></button>
+    <!-- Licence duty (Llama 3.2 Community License 1.b.i) and AUP section 4, Salty-only: kept outside
+         .st-stage because every press on the stage is a press on Salty (salty-tank-3d.mjs taps). -->
+    <a class="st-credit" href="./licenses/SALTY_NOTICES.txt" target="_blank" rel="noopener noreferrer">Built with Llama<span>Salty is an AI · she can be wrong</span></a>
+    <div class="st-panel" aria-hidden="true">
+      <div class="st-tile">
+        <button class="st-close" type="button" aria-label="Close">×</button>
+        <div class="st-you"></div>
+        <div class="st-her" aria-live="polite"></div>
+        <div class="st-line"></div>
+      </div>
+      <div class="st-kb" role="group" aria-label="Keyboard"></div>
+    </div>`;
+  document.body.append(root);
+
+  const q = (s) => root.querySelector(s);
+  state = {
+    stage: q(".st-stage"), tank: q(".st-tank"), videos: [...root.querySelectorAll(".st-tank video")],
+    mic: q(".st-mic"), txt: q(".st-txt"), credit: q(".st-credit"), panel: q(".st-panel"), you: q(".st-you"), her: q(".st-her"),
+    line: q(".st-line"), kb: q(".st-kb"),
+    front: null, target: null, mood: "idle", typed: "", shift: true, symbols: false, happyTimer: 0,
+    switchId: 0, salty3d: null, thinkShown: false, tapAlt: false,
+    timers: [], observers: [], cleanup: [],
+  };
+  for (const v of state.videos) {
+    const m = MOODS[v.dataset.mood];
+    for (const k of ["x", "y", "w"]) if (m[k]) v.style.setProperty(`--${k}`, m[k]);
+  }
+
+  addBubbles();
+  setMood("idle");
+  init3D();
+  renderKeyboard();
+  renderLine();
+  wireControls();
+  wireAppState();
+  placeLegs();
+}
+
+// 3D Salty (29 Oct model) replaces the video loops when she loads. Any failure — no WebGL,
+// a bad model file, an old WebView — keeps the proven video tank exactly as it was.
+async function init3D() {
+  const mine = state;
+  try {
+    const api = await createSalty3D(mine.tank, {
+      // RMS envelope -> mouth amount. Her soft consonants sit just above the quiet floor
+      // salty-mind.mjs uses (open 0.02); loud speech on the ROG sits around 0.1-0.15.
+      getLevel: () => Math.min(1, Math.max(0, (saltyVoiceLevel() - 0.015) / 0.1)),
+      // Her actual words, one mouth shape per syllable, consumed as she says them.
+      getViseme: () => saltyNextSpeechViseme(),
+      onTap: () => {
+        if (!state || state !== mine || state.mood === "talk") return;
+        mine.tapAlt = !mine.tapAlt;
+        mine.salty3d?.playMood(mine.tapAlt ? "wave" : "wink");
+      },
+    });
+    if (!state || state !== mine) { api.dispose(); return; }
+    mine.salty3d = api;
+    mine.tank.classList.add("st-3d-on");
+    for (const v of mine.videos) v.pause();
+    // Re-apply whatever she was doing when the model finished loading.
+    const mood = mine.mood;
+    mine.mood = ""; mine.target = "";
+    setMood(mood);
+  } catch (e) {
+    console.warn("Salty 3D did not load; keeping her video loops", e);
+  }
+}
+
+function unmount() {
+  if (!root) return;
+  state.salty3d?.dispose();
+  for (const t of state.timers) clearInterval(t);
+  for (const o of state.observers) o.disconnect();
+  for (const f of state.cleanup) f();
+  for (const v of state.videos) { v.pause(); v.removeAttribute("src"); v.load(); }
+  root.remove();
+  document.querySelector(".st-return")?.remove();
+  root = null; state = null;
+}
+
+// ---------- scene ----------
+
+// One loaded video per mood. A switch seeks the next loop to the frame that matches her current
+// pose (MATCH), starts it, and only once that frame is on screen fades it in ON TOP while the
+// current one stays fully solid underneath; then the old one is hidden and paused.
+// ☠️ SHE WENT SEE-THROUGH ON EVERY SWITCH (Shaun, 28 Oct). Both layers used to fade at once
+// (out .25 s, in .25 s), so halfway through each was ~half opaque and the tank showed through her.
+// ☠️ AND THE SWITCH TO TALKING LOOKED GLITCHY (Shaun, same day): every switch re-set the src (a
+// reload), always started the talk loop on frame 0 whatever pose she was in (her head jumped,
+// two outlines in the fade), and faded on "playing", before the new frame was always painted.
+// A switch that is overtaken before it shows is dropped (switchId).
+// ☠️ THE SEEK IS ONLY CHEAP IF THE CLIP HAS KEYFRAMES. The cut-outs were encoded with 1 (talk)
+// and 4 (idle, 434 frames) keyframes, so a matched seek decoded up to ~4 s of alpha VP9 on a
+// phone whose GPU her mind is using: the frozen old loop held 0.5-1.3 s at every switch (take 4,
+// freezedetect lined up with her voice). Re-encoded 28 Oct with a keyframe every 6 frames
+// (-g 6, same frames and alpha; originals in salty-video/loops).
+const FPS = 24;
+const FADE_MS = 300;
+
+function seekThen(v, seconds, fn) {
+  if (v.readyState < 1) { v.addEventListener("loadedmetadata", () => seekThen(v, seconds, fn), { once: true }); return; }
+  if (Math.abs(v.currentTime - seconds) < 0.5 / FPS && v.readyState >= 2) { fn(); return; }
+  v.addEventListener("seeked", fn, { once: true });
+  v.currentTime = seconds;
+}
+
+function setMood(mood) {
+  if (!MOODS[mood]) mood = "idle";
+  state.mood = mood;
+  if (state.target === mood) return;
+  state.target = mood;
+  // 3D: talking is her idle body with a live mouth (not a separate loop), happy is the
+  // happy loop with a laugh face. Moods like think/wave go through playMood directly.
+  if (state.salty3d) {
+    const d = state.salty3d;
+    if (mood === "talk") { d.playLoop("idle"); d.setExpression("neutral"); d.setTalking(true); }
+    else if (mood === "happy") { d.setTalking(false); d.playLoop("happy"); d.setExpression("laugh"); }
+    else { d.setTalking(false); d.playLoop("idle"); d.setExpression("neutral"); }
+    return;
+  }
+  const id = ++state.switchId;
+  const next = state.videos.find((v) => v.dataset.mood === mood);
+  const old = state.front;
+  if (next === old) { next.play().catch(() => {}); return; }   // switched back before the fade began
+  // ☠️ FREEZE HER FIRST, THEN MATCH. The seek + start + first painted frame of the next loop takes
+  // ~0.35 s on the ROG; an idle loop left playing had moved on by then, so the matched pose was
+  // stale and the fade showed two sets of eyes (screenrecord, 28 Oct). Held still, the frame she
+  // is matched from is the frame she is showing when the next loop fades in over it.
+  old?.pause();
+  const from = old?.dataset.mood;
+  const table = MATCH[`${from}>${mood}`];
+  const fromFrame = Math.floor((old?.currentTime || 0) * FPS);
+  const start = table ? table[Math.min(Math.max(fromFrame, 0), table.length - 1)] : 0;
+  next.classList.remove("on", "top");
+  next.pause();
+  const show = () => {
+    if (!state || id !== state.switchId) return;
+    next.classList.add("top", "on"); old?.classList.remove("top"); state.front = next;
+    setTimeout(() => {
+      if (state && old && state.front !== old) { old.classList.remove("on"); old.pause(); }
+    }, FADE_MS + 40);
+  };
+  seekThen(next, (start + 0.5) / FPS, () => {
+    if (!state || id !== state.switchId) return;
+    next.play().catch(() => {});
+    if (typeof next.requestVideoFrameCallback === "function") next.requestVideoFrameCallback(show);
+    else next.addEventListener("playing", show, { once: true });
+  });
+}
+
+function addBubbles() {
+  const { tank } = state;
+  for (let i = 0; i < 14; i++) {
+    const s = el("div", "st-bubble");
+    const size = (tank.clientWidth || 500) * (0.003 + Math.random() * 0.006);
+    s.style.cssText = `left:${4 + Math.random() * 92}%;width:${size}px;height:${size}px;` +
+      `--h:${(tank.clientHeight || 250) * 0.9}px;--sway:${(Math.random() - .5) * 24}px;` +
+      `animation-duration:${5 + Math.random() * 6}s;animation-delay:${-Math.random() * 10}s`;
+    tank.insertBefore(s, tank.querySelector(".st-sandfront"));
+  }
+}
+
+// ☠️ THE WEBVIEW DRAWS UNDER ANDROID'S BACK/HOME BAR. On the ROG (27 Oct) the leg buttons sat half
+// under it: this build reports env(safe-area-inset-*) as 0 (Capacitor's safe-area injection fails).
+// So: the reported inset when there is one, otherwise the standard 48dp button bar - at the bottom in
+// portrait, at the right in landscape (3-button nav moves to the side when the phone turns).
+function systemBars() {
+  const probe = el("div");
+  probe.style.cssText = "position:fixed;visibility:hidden;pointer-events:none;" +
+    "padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)";
+  document.body.append(probe);
+  const cs = getComputedStyle(probe);
+  const px = (v) => parseFloat(v) || 0;
+  const bars = { top: px(cs.paddingTop), right: px(cs.paddingRight), bottom: px(cs.paddingBottom), left: px(cs.paddingLeft) };
+  probe.remove();
+  const portrait = window.innerHeight >= window.innerWidth;
+  const native = Boolean(window.Capacitor?.isNativePlatform?.());
+  if (native && portrait && !bars.bottom) bars.bottom = 48;
+  if (native && !portrait && !bars.right && !bars.left) bars.right = 48;
+  root.style.setProperty("--st-bar-b", `${bars.bottom}px`);
+  root.style.setProperty("--st-bar-r", `${bars.right}px`);
+  root.style.setProperty("--st-bar-l", `${bars.left}px`);
+  return bars;
+}
+
+// Buttons sit on the table legs. In portrait the legs run off the sides of the screen, so the
+// buttons are held inside it (a 16px gutter plus half a button, clear of the system bars), still low on the table.
+function placeLegs() {
+  if (!state) return;
+  const bars = systemBars();
+  const r = state.stage.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const size = Math.round(Math.max(58, Math.min(84, Math.min(vw, vh) * 0.15)));
+  const pad = 16 + size / 2;
+  const y = Math.min(r.top + r.height * LEGS.y, vh - bars.bottom - pad - 8);
+  const xs = [];
+  for (const [btn, fx] of [[state.mic, LEGS.left], [state.txt, LEGS.right]]) {
+    const x = Math.max(bars.left + pad, Math.min(vw - bars.right - pad, r.left + r.width * fx));
+    btn.style.setProperty("--size", `${size}px`);
+    btn.style.left = `${x}px`; btn.style.top = `${y}px`;
+    xs.push(x);
+  }
+  // The credit line sits level with the buttons, centred in the gap between them.
+  state.credit.style.left = `${(xs[0] + xs[1]) / 2}px`; state.credit.style.top = `${y}px`;
+  state.credit.style.maxWidth = `${Math.max(120, xs[1] - xs[0] - size - 16)}px`;
+}
+
+// ---------- controls ----------
+
+function wireControls() {
+  const onResize = () => requestAnimationFrame(placeLegs);
+  window.addEventListener("resize", onResize);
+  window.addEventListener("orientationchange", onResize);
+  state.stage.addEventListener("transitionend", onResize);
+  state.cleanup.push(() => {
+    window.removeEventListener("resize", onResize);
+    window.removeEventListener("orientationchange", onResize);
+  });
+
+  // The mic leg is Veridity's own Start Mic; whenever Stop would stop something it is her Stop.
+  state.mic.addEventListener("click", () => {
+    const shell = document.querySelector(".phone-shell");
+    const stop = document.getElementById("homeStopBtn");
+    if (saltyLegAction(shell?.classList) === "stop" && stop) stop.click();
+    else document.getElementById("micBtn")?.click();
+  });
+  state.txt.addEventListener("click", () => openTyping(true));
+  root.querySelector(".st-close").addEventListener("click", () => openTyping(false));
+  state.kb.addEventListener("pointerdown", onKeyDown);
+  state.kb.addEventListener("pointerup", onKeyUp);
+  state.kb.addEventListener("pointercancel", onKeyUp);
+  state.kb.addEventListener("pointerleave", onKeyUp);
+
+  // Long-press the neon sign: put the tank away to reach Veridity's own screens (settings, debug).
+  const neon = root.querySelector(".st-neon");
+  let press = 0;
+  neon.addEventListener("pointerdown", () => { press = setTimeout(hideForNow, 900); });
+  for (const ev of ["pointerup", "pointerleave", "pointercancel"]) neon.addEventListener(ev, () => clearTimeout(press));
+
+  // Nothing to watch while the phone is face down or the app is behind another: stop the clips.
+  const onVis = () => {
+    if (!state) return;
+    state.salty3d?.setPaused(document.hidden);
+    if (document.hidden) state.videos.forEach((v) => v.pause());
+    else if (!state.salty3d) state.front?.play().catch(() => {});
+  };
+  document.addEventListener("visibilitychange", onVis);
+  state.cleanup.push(() => document.removeEventListener("visibilitychange", onVis));
+}
+
+function hideForNow() {
+  root.classList.add("st-yield");
+  root.dataset.away = "1";
+  const pill = el("button", "st-return", { type: "button" });
+  pill.textContent = "🐠 Salty's tank";
+  pill.addEventListener("click", () => { pill.remove(); delete root.dataset.away; root.classList.remove("st-yield"); placeLegs(); });
+  document.body.append(pill);
+}
+
+function openTyping(open) {
+  root.classList.toggle("typing", open);
+  state.panel.setAttribute("aria-hidden", String(!open));
+  if (open) { state.shift = state.typed === ""; renderKeyboard(); }
+  setTimeout(placeLegs, 480);
+}
+
+// ---------- keyboard ----------
+
+function keyLabel(ch) {
+  if (ch === "⇧") return "⇧";
+  if (ch === "⌫") return "⌫";
+  if (ch === "␣") return "space";
+  if (ch === "↵") return "send";
+  if (ch === "?") return "?123";
+  if (ch === "a" && state.symbols) return "ABC";
+  return state.shift && !state.symbols ? ch.toUpperCase() : ch;
+}
+
+function renderKeyboard() {
+  const rows = state.symbols ? SYMBOLS : LETTERS;
+  state.kb.textContent = "";
+  rows.forEach((row, r) => {
+    const line = el("div", "st-row");
+    // "abc" on the symbols page is one key, not three letters.
+    const keys = r === 3 && state.symbols ? ["a", ...row.slice(3)] : [...row];
+    keys.forEach((ch, c) => {
+      const key = el("button", "st-key", { type: "button", "data-k": ch });
+      key.style.setProperty("--i", String(c + r * 0.5));
+      if ("⇧⌫?a".includes(ch) && (r >= 2)) key.classList.add("wide");
+      if (ch === "␣") key.classList.add("space");
+      if (ch === "↵") key.classList.add("send");
+      if (ch === "⇧" && state.shift) key.classList.add("on");
+      key.textContent = keyLabel(ch);
+      line.append(key);
+    });
+    state.kb.append(line);
+  });
+}
+
+let repeat = 0;
+function onKeyDown(event) {
+  const key = event.target.closest(".st-key");
+  if (!key) return;
+  event.preventDefault();
+  key.classList.add("down");
+  navigator.vibrate?.(6);
+  press(key.dataset.k);
+  if (key.dataset.k === "⌫") {
+    clearTimeout(repeat);
+    repeat = setTimeout(function again() { press("⌫"); repeat = setTimeout(again, 60); }, 420);
+  }
+}
+function onKeyUp() {
+  clearTimeout(repeat);
+  state?.kb.querySelectorAll(".st-key.down").forEach((k) => k.classList.remove("down"));
+}
+
+function press(k) {
+  if (k === "⇧") { state.shift = !state.shift; renderKeyboard(); return; }
+  if (k === "?") { state.symbols = true; renderKeyboard(); return; }
+  if (k === "a" && state.symbols) { state.symbols = false; renderKeyboard(); return; }
+  if (k === "⌫") { state.typed = state.typed.slice(0, -1); }
+  else if (k === "↵") { send(); return; }
+  else if (k === "␣") { state.typed += " "; }
+  else {
+    state.typed += state.shift && !state.symbols ? k.toUpperCase() : k;
+    if (state.shift) { state.shift = false; renderKeyboard(); }
+  }
+  // Capital after a sentence ends, like a phone keyboard.
+  const autoCap = state.typed === "" || /[.!?]\s$/.test(state.typed);
+  if (!state.symbols && autoCap !== state.shift) { state.shift = autoCap; renderKeyboard(); }
+  renderLine();
+}
+
+function renderLine() {
+  state.line.textContent = "";
+  if (state.typed) state.line.append(document.createTextNode(state.typed));
+  else {
+    const hint = el("span", "st-placeholder");
+    hint.textContent = "Say something to Salty...";
+    state.line.append(hint);
+  }
+  state.line.append(el("span", "st-caret"));
+}
+
+// Through Veridity's own form: submitTypedMessage keeps its order (crisis net, commands, then the mind).
+function send() {
+  const text = state.typed.trim();
+  const input = document.getElementById("textInput");
+  const form = document.getElementById("textForm");
+  if (!text || !input || !form) return;
+  input.value = text;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  form.requestSubmit();
+  state.you.textContent = `you: ${text}`;
+  state.typed = ""; state.shift = true; state.symbols = false;
+  renderKeyboard(); renderLine();
+}
+
+// ---------- her state, read from Veridity's screen ----------
+
+function wireAppState() {
+  const shell = document.querySelector(".phone-shell");
+  const reply = document.getElementById("homeReplyBody");
+  const micBtn = document.getElementById("micBtn");
+  let wasSpeaking = false;
+
+  const sync = () => {
+    if (!state) return;
+    const c = shell?.classList;
+    // Her reply is under way (stays on between chunks) vs her voice actually making sound.
+    const replying = Boolean(c?.contains("aoede-speaking"));
+    const speaking = saltyVoiceSounding();
+    const thinking = Boolean(c?.contains("thinking"));
+    const turn = Boolean(c?.contains("turn-active"));
+    // Wider than the turn (a replay is not one); the leg's label and its click agree.
+    const stoppable = saltyLegAction(c) === "stop";
+    const listening = Boolean(c?.contains("mic-listening"));
+    state.mic.classList.toggle("live", listening || stoppable);
+    state.mic.querySelector("span").textContent = stoppable ? "stop" : "mic";
+    state.mic.disabled = !stoppable && Boolean(micBtn?.disabled);
+    state.txt.classList.toggle("live", root.classList.contains("typing"));
+    // 3D: while she thinks, she does her think move once per turn; while listening, a soft smile.
+    if (state.salty3d) {
+      // ☠️ GPU CONTENTION ATE HER REPLY SPEED (29 Oct, Shaun's turns). Her tank
+      // renders WebGL flat-out on the same GPU her mind decodes on and her voice
+      // synthesises with: first token ~1.9 s, then up to ~3.8 s more before the
+      // first spoken chunk was even cut. While a turn is under way and she is
+      // not yet making sound, freeze the canvas — she holds her think/idle pose
+      // and the GPU belongs to her mind and voice. Sound starting unfreezes
+      // her, so her mouth still animates while she talks.
+      state.salty3d.setPaused(turn && !speaking);
+      if (thinking && !replying) {
+        if (!state.thinkShown && !speaking) { state.thinkShown = true; state.salty3d.playMood("think"); }
+      } else if (!thinking) state.thinkShown = false;
+      if (listening && !speaking && !replying && !thinking) state.salty3d.setExpression("smile");
+    }
+    if (speaking) {
+      clearTimeout(state.happyTimer);
+      setMood("talk");
+    } else if (replying) {
+      // A real break mid-reply (her voice quiet SALTY_MOUTH_QUIET_MS): back to the idle loop,
+      // mouth shut and body still moving, by the same pose-matched solid switch.
+      // ☠️ NOT holdMouth: a still body reads as a stalled video. Take 3 still froze her for up
+      // to 2.3 s per break; the idle loop while she thinks froze at most 0.45 s (freezedetect).
+      if (state.mood === "talk") setMood("idle");
+    } else if (wasSpeaking || state.mood === "talk") {
+      // Finished the reply: a laugh in it gets a happy wiggle before she settles.
+      const last = reply?.textContent || "";
+      if (wasSpeaking && /\b(ha(ha)+|heh(eh)*|lol)\b|😂|🤣|😆/i.test(last)) {
+        setMood("happy");
+        state.happyTimer = setTimeout(() => state && setMood("idle"), 3200);
+      } else setMood("idle");
+    }
+    // Remembered across mid-reply gaps, so the end-of-reply wiggle still knows she spoke.
+    if (speaking) wasSpeaking = true;
+    else if (!replying) wasSpeaking = false;
+    showHer(thinking && !replying);
+  };
+
+  const showHer = (waiting) => {
+    let text = (reply?.textContent || "").trim();
+    // index.html's empty-card hint is Veridity's, not something Salty said.
+    if (/her reply appears here/i.test(text)) text = "";
+    state.her.textContent = "";
+    if (waiting) {
+      const b = el("b"); b.textContent = "Salty"; state.her.append(b, " ");
+      state.her.append(el("span", "st-dots"));
+    } else if (text) {
+      const b = el("b"); b.textContent = "Salty"; state.her.append(b, ` ${text}`);
+      state.her.scrollTop = state.her.scrollHeight;
+    }
+  };
+
+  if (shell) {
+    const o = new MutationObserver(sync);
+    o.observe(shell, { attributes: true, attributeFilter: ["class"] });
+    state.observers.push(o);
+  }
+  if (reply) {
+    const o = new MutationObserver(sync);
+    o.observe(reply, { childList: true, characterData: true, subtree: true });
+    state.observers.push(o);
+  }
+  state.cleanup.push(onSaltyVoiceSounding(sync));
+  sync();
+
+  // Veridity's dialogs (mic permission, first run, delivery) must be reachable: the tank steps aside.
+  const DIALOGS = '[role="dialog"]:not([hidden]), [aria-modal="true"]:not([hidden]), .first-run-tile:not([hidden])';
+  state.timers.push(setInterval(() => {
+    if (!root || root.dataset.away) return;
+    const open = [...document.querySelectorAll(DIALOGS)].some((d) => !root.contains(d) && d.getClientRects().length > 0);
+    if (open !== root.classList.contains("st-yield")) {
+      root.classList.toggle("st-yield", open);
+      if (!open) placeLegs();
+    }
+  }, 500));
+}
+
+// A restart opens straight into the tank when Salty was the mind last time.
+if (remembered()) {
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });
+  else mount();
+}
