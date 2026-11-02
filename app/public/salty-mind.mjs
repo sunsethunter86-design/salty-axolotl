@@ -142,6 +142,19 @@ export function saltyFacts(text) {
   return null;
 }
 
+// What she remembers about him from earlier sessions (salty-memory.mjs), set by the tank once per
+// session so her system prompt, and the engine's persona checkpoint after it, stay the same all session.
+let memoryLine = "";
+let recallNote = () => null;
+/**
+ * Sets the remembered-notes block that follows her system prompt ("" for none), and the function that
+ * notes, on his newest message, what she does or doesn't remember when he asks (salty-memory.mjs).
+ */
+export function setSaltyMemory(line, recall = null) {
+  memoryLine = typeof line === "string" ? line.trim() : "";
+  recallNote = typeof recall === "function" ? recall : () => null;
+}
+
 /** Her conversation as Salty was trained to see it: one system prompt, then her last few turns. */
 export function adaptMessages(messages) {
   const turns = [];
@@ -156,9 +169,12 @@ export function adaptMessages(messages) {
     if (trimmed[i].role !== "user") continue;
     const fact = saltyFacts(trimmed[i].content);
     if (fact) trimmed[i] = { ...trimmed[i], content: `${trimmed[i].content}\n\n(Worked out for you: ${fact}.)` };
+    let recall = null;
+    try { recall = recallNote(trimmed[i].content); } catch { recall = null; }
+    if (recall) trimmed[i] = { ...trimmed[i], content: `${trimmed[i].content}\n\n(${recall})` };
     break;
   }
-  return [{ role: "system", content: SALTY_SYSTEM }, ...trimmed];
+  return [{ role: "system", content: memoryLine ? `${SALTY_SYSTEM}\n\n${memoryLine}` : SALTY_SYSTEM }, ...trimmed];
 }
 
 /**

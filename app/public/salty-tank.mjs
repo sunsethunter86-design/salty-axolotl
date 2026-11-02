@@ -10,6 +10,8 @@
 
 import { onSaltyVoiceSounding, saltyVoiceSounding, saltyVoiceLevel, saltyNextSpeechViseme, saltyLegAction } from "./salty-mind.mjs";
 import { saltyMoodFor } from "./salty-moods.mjs";
+import { setSaltyMemory } from "./salty-mind.mjs";
+import { loadSaltyMemory, saveSaltyMemory, forgetSaltyMemory, forgetSaltyNote, captureFromWords, memoryPromptLine, recallNoteFor } from "./salty-memory.mjs";
 import { createSalty3D } from "./salty-tank-3d.mjs?v=20261102-moods";
 
 const KEY = "vfl.saltyTank";
@@ -38,6 +40,11 @@ let state = null;
 // Her mind runs on the Hexagon NPU when it is a GGUF (the -PvfMetaHex lane); the LiteRT lane
 // (.litertlm) decodes on the GPU the tank draws with. Only that lane needs the tank to hold still.
 let mindOnNpu = false;
+// What she remembers about him (salty-memory.mjs). Loaded once, at module load, which is before her
+// mind's first request of the session: her system prompt then stays the same all session. Notes made
+// during the session are saved at once and shown in the card, and reach her prompt next session.
+let memory = loadSaltyMemory();
+setSaltyMemory(memoryPromptLine(memory), (words) => recallNoteFor(memory, words));
 
 function remembered() {
   try { return localStorage.getItem(KEY) === "1"; } catch { return false; }
@@ -65,7 +72,7 @@ function mount() {
   if (root || !document.body) return;
   let css = document.querySelector("link[data-salty-tank]");
   if (!css) {
-    css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261102-icon`, "data-salty-tank": "" });
+    css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261102-memory`, "data-salty-tank": "" });
     document.head.append(css);
   }
   root = el("div", "", { id: "saltyTank", role: "application", "aria-label": "Salty's tank" });
@@ -112,6 +119,13 @@ function mount() {
     <!-- Licence duty (Llama 3.2 Community License 1.b.i) and AUP section 4, Salty-only: kept outside
          .st-stage because every press on the stage is a press on Salty (salty-tank-3d.mjs taps). -->
     <a class="st-credit" href="./licenses/SALTY_NOTICES.txt" target="_blank" rel="noopener noreferrer">Built with Llama<span>Salty is an AI · she can be wrong</span></a>
+    <button class="st-mem" type="button" aria-label="What Salty remembers about you">🐚 <span class="st-mem-n"></span></button>
+    <div class="st-memcard" role="dialog" aria-label="What Salty remembers" hidden>
+      <div class="st-memhead"><b>What Salty remembers</b><button class="st-memclose" type="button" aria-label="Close">×</button></div>
+      <ul class="st-memlist"></ul>
+      <p class="st-memnote">Kept only on this phone, never sent anywhere. Things you tell her now, she remembers from the next time she wakes up.</p>
+      <button class="st-memforget" type="button">Forget everything</button>
+    </div>
     <div class="st-panel" aria-hidden="true">
       <div class="st-tile">
         <button class="st-close" type="button" aria-label="Close">×</button>
@@ -146,6 +160,7 @@ function mount() {
   renderLine();
   wireControls();
   wireAppState();
+  wireMemory();
   placeLegs();
 }
 
@@ -481,6 +496,51 @@ function send() {
   renderKeyboard(); renderLine();
 }
 
+// ---------- what she remembers: the shell button and its card ----------
+
+function wireMemory() {
+  const btn = root.querySelector(".st-mem"), card = root.querySelector(".st-memcard");
+  btn.addEventListener("click", () => { renderMemory(); card.hidden = !card.hidden; });
+  root.querySelector(".st-memclose").addEventListener("click", () => { card.hidden = true; });
+  // Forgetting takes effect now, in her prompt too (one re-read of it), not next session.
+  const forgotten = () => { setSaltyMemory(memoryPromptLine(memory), (words) => recallNoteFor(memory, words)); renderMemory(); };
+  root.querySelector(".st-memforget").addEventListener("click", () => {
+    memory = forgetSaltyMemory();
+    forgotten();
+  });
+  root.querySelector(".st-memlist").addEventListener("click", (e) => {
+    const id = e.target.closest?.("button[data-id]")?.dataset.id;
+    if (!id) return;
+    memory = forgetSaltyNote(memory, id);
+    saveSaltyMemory(memory);
+    forgotten();
+  });
+  renderMemory();
+}
+
+function renderMemory() {
+  if (!root) return;
+  const notes = [
+    ...memory.facts.map((f) => ({ id: f.key, text: f.text.replace(/^Their /, "Your ").replace(/^They /, "You ") })),
+    ...memory.moments.map((m) => ({ id: m.text, text: `You told her: “${m.text}”` })),
+  ];
+  root.querySelector(".st-mem-n").textContent = notes.length ? String(notes.length) : "";
+  const list = root.querySelector(".st-memlist");
+  list.textContent = "";
+  if (!notes.length) {
+    const li = el("li", "st-memempty"); li.textContent = "Nothing yet. Tell her about your day, your dog, what you love.";
+    list.append(li);
+  }
+  for (const n of notes) {
+    const li = el("li");
+    const span = el("span"); span.textContent = n.text;
+    const x = el("button", "st-memx", { type: "button", "aria-label": "Forget this", "data-id": n.id }); x.textContent = "×";
+    li.append(span, x);
+    list.append(li);
+  }
+  root.querySelector(".st-memforget").hidden = !notes.length;
+}
+
 // ---------- her state, read from Veridity's screen ----------
 
 function wireAppState() {
@@ -584,7 +644,11 @@ function wireAppState() {
     const o = new MutationObserver((records) => {
       const added = records.flatMap((r) => [...r.addedNodes]).filter((n) => n.classList?.contains("log-message") && n.classList.contains("user"));
       if (added.length !== 1) return; // a batch is a restored conversation, not him talking now
-      const mood = saltyMoodFor(added[0].querySelector("p")?.textContent || "");
+      const words = added[0].querySelector("p")?.textContent || "";
+      const mood = saltyMoodFor(words);
+      // What he tells her now is kept for next time (salty-memory.mjs; rules on his words only).
+      const kept = captureFromWords(memory, words, { mood });
+      if (kept.added.length) { memory = kept.mem; saveSaltyMemory(memory); renderMemory(); }
       if (mood) { pendingMood = { mood, at: performance.now() }; sync(); }
     });
     o.observe(log, { childList: true });
