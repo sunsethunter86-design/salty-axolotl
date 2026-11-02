@@ -34,6 +34,9 @@ const SYMBOLS = ["1234567890", "@#$%&-+()/", "=*\"':;!?⌫", "abc,␣.↵"];
 
 let root = null;
 let state = null;
+// Her mind runs on the Hexagon NPU when it is a GGUF (the -PvfMetaHex lane); the LiteRT lane
+// (.litertlm) decodes on the GPU the tank draws with. Only that lane needs the tank to hold still.
+let mindOnNpu = false;
 
 function remembered() {
   try { return localStorage.getItem(KEY) === "1"; } catch { return false; }
@@ -42,8 +45,9 @@ function remember(on) {
   try { on ? localStorage.setItem(KEY, "1") : localStorage.removeItem(KEY); } catch { /* private mode: just no head start */ }
 }
 
-/** The one entry point app.js uses. Idempotent. */
-export function syncSaltyTank(on) {
+/** The one entry point app.js uses. Idempotent. `modelFile` is the loaded mind file from /health. */
+export function syncSaltyTank(on, modelFile = "") {
+  mindOnNpu = /\.gguf$/i.test(String(modelFile));
   remember(on);
   if (on) mount();
   else unmount();
@@ -482,7 +486,9 @@ function wireAppState() {
       // not yet making sound, freeze the canvas — she holds her think/idle pose
       // and the GPU belongs to her mind and voice. Sound starting unfreezes
       // her, so her mouth still animates while she talks.
-      state.salty3d.setPaused(turn && !speaking);
+      // On the NPU lane her mind is off the GPU, and the freeze read as a stall on camera
+      // (2 Nov): she keeps moving there, think move and all.
+      state.salty3d.setPaused(!mindOnNpu && turn && !speaking);
       if (thinking && !replying) {
         if (!state.thinkShown && !speaking) { state.thinkShown = true; state.salty3d.playMood("think"); }
       } else if (!thinking) state.thinkShown = false;

@@ -12,7 +12,7 @@
 3663	app/public/licenses/SALTY_NOTICES.txt
 24788	app/public/salty-mind.mjs
 25062	app/public/salty-tank-3d.mjs
-27519	app/public/salty-tank.mjs
+28019	app/public/salty-tank.mjs
 276228	app/public/salty/Neonderthaw-Regular.ttf
 1585329	app/public/salty/loops/happy_wide_cut.webm
 5257769	app/public/salty/loops/idle_listen_cut.webm
@@ -136,6 +136,7 @@
 650	experiments/salty/npu/tensor54b.py
 825	experiments/salty/npu/tensor54c.py
 716	experiments/salty/npu/tensor54d.py
+4157	experiments/salty/npu/think_freeze_timing.mjs
 5091	experiments/salty/scripts/auto_metrics.py
 1925	experiments/salty/scripts/build_train.py
 5484	experiments/salty/scripts/common.py
