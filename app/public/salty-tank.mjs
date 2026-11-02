@@ -50,7 +50,7 @@ export function syncSaltyTank(on, modelFile = "") {
   mindOnNpu = /\.gguf$/i.test(String(modelFile));
   remember(on);
   if (on) mount();
-  else unmount();
+  else { document.documentElement.classList.remove("salty-boot"); unmount(); }
 }
 
 function el(tag, cls, attrs = {}) {
@@ -62,8 +62,9 @@ function el(tag, cls, attrs = {}) {
 
 function mount() {
   if (root || !document.body) return;
-  if (!document.querySelector("link[data-salty-tank]")) {
-    const css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261102-cool`, "data-salty-tank": "" });
+  let css = document.querySelector("link[data-salty-tank]");
+  if (!css) {
+    css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261102-icon`, "data-salty-tank": "" });
     document.head.append(css);
   }
   root = el("div", "", { id: "saltyTank", role: "application", "aria-label": "Salty's tank" });
@@ -72,7 +73,19 @@ function mount() {
   // saw it before she took over. The tank's own critical layout is inline from
   // the first paint; salty-tank.css takes over identical values when it lands.
   root.style.cssText = "position:fixed;inset:0;z-index:100;overflow:hidden;background:#1d1a17;color:#f3ece6";
+  // ☠️ ...but only her layout was inline. Until salty-tank.css landed, her typing panel and RGB keyboard
+  // (kept off-screen by that sheet) sat unstyled in plain view for a frame or two on every cold launch
+  // (2 Nov, launch recording). Everything but her dark background stays hidden until the sheet has loaded.
+  // ☠️ Hiding alone wasn't enough: when the sheet landed, the panel *transitioned* to its off-screen spot,
+  // and revealing her caught it mid-slide. No transitions while the sheet is pending.
+  root.className = "st-css-pending";
+  // Two frames after the sheet lands, so a style pass has already run with transitions off.
+  const ready = () => requestAnimationFrame(() => requestAnimationFrame(() => root?.classList.remove("st-css-pending")));
+  if (css.sheet) ready();
+  else { css.addEventListener("load", ready, { once: true }); css.addEventListener("error", ready, { once: true }); }
   root.innerHTML = `
+    <style>#saltyTank.st-css-pending > :not(.st-bg) { visibility: hidden; }
+      #saltyTank.st-css-pending, #saltyTank.st-css-pending * { transition: none !important; }</style>
     <svg width="0" height="0" style="position:absolute" aria-hidden="true">
       <filter id="st-reeflight" color-interpolation-filters="sRGB">
         <feColorMatrix type="matrix" values=".90 0 0 0 0   0 .84 0 0 0   0 0 .96 0 .05   0 0 0 1 0"/>
@@ -108,6 +121,8 @@ function mount() {
       <div class="st-kb" role="group" aria-label="Keyboard"></div>
     </div>`;
   document.body.append(root);
+  // She now covers the screen herself: lift index.html's first-paint cover (salty-boot).
+  document.documentElement.classList.remove("salty-boot");
 
   const q = (s) => root.querySelector(s);
   state = {

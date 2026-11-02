@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Salty build (-PvfMetaId): her own icon and launch splash, not Veridity's VF mark (2 Nov). -->
+    <color name="ic_launcher_background">#1D1A17</color>
+</resources>

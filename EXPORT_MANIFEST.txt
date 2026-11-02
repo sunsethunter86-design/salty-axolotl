@@ -2,6 +2,22 @@
 # bytes	path
 927	app/android/app/native-hex/build_hex_native.sh
 25556	app/android/app/native-hex/vfhex_jni.cpp
+15288	app/android/app/src/meta/res/mipmap-hdpi/ic_launcher.png
+71617	app/android/app/src/meta/res/mipmap-hdpi/ic_launcher_foreground.png
+15629	app/android/app/src/meta/res/mipmap-hdpi/ic_launcher_round.png
+7196	app/android/app/src/meta/res/mipmap-mdpi/ic_launcher.png
+33589	app/android/app/src/meta/res/mipmap-mdpi/ic_launcher_foreground.png
+7364	app/android/app/src/meta/res/mipmap-mdpi/ic_launcher_round.png
+26230	app/android/app/src/meta/res/mipmap-xhdpi/ic_launcher.png
+122202	app/android/app/src/meta/res/mipmap-xhdpi/ic_launcher_foreground.png
+26794	app/android/app/src/meta/res/mipmap-xhdpi/ic_launcher_round.png
+55569	app/android/app/src/meta/res/mipmap-xxhdpi/ic_launcher.png
+258507	app/android/app/src/meta/res/mipmap-xxhdpi/ic_launcher_foreground.png
+56626	app/android/app/src/meta/res/mipmap-xxhdpi/ic_launcher_round.png
+94602	app/android/app/src/meta/res/mipmap-xxxhdpi/ic_launcher.png
+436651	app/android/app/src/meta/res/mipmap-xxxhdpi/ic_launcher_foreground.png
+96234	app/android/app/src/meta/res/mipmap-xxxhdpi/ic_launcher_round.png
+224	app/android/app/src/meta/res/values/ic_launcher_background.xml
 426	app/android/app/src/meta/res/values/strings.xml
 3838	app/public/helpline-guard.mjs
 10344	app/public/licenses/DIRECT_AI_NOTICES.txt
@@ -12,7 +28,7 @@
 3663	app/public/licenses/SALTY_NOTICES.txt
 24788	app/public/salty-mind.mjs
 25062	app/public/salty-tank-3d.mjs
-28368	app/public/salty-tank.mjs
+29684	app/public/salty-tank.mjs
 276228	app/public/salty/Neonderthaw-Regular.ttf
 1585329	app/public/salty/loops/happy_wide_cut.webm
 5257769	app/public/salty/loops/idle_listen_cut.webm
@@ -193,6 +209,7 @@
 2572	salty-rig/gill_roots.json
 1098	salty-rig/grid_views.py
 9151	salty-rig/head_patch_section.py
+436651	salty-rig/icon/salty_icon_432.png
 1776	salty-rig/inspect_eyes.py
 1256	salty-rig/inspect_roots.py
 832	salty-rig/inspect_unweighted.py
@@ -201,6 +218,7 @@
 1813	salty-rig/look.py
 398907	salty-rig/look/anim_sheet.png
 885666	salty-rig/look/face_sheet.png
+635446	salty-rig/look/launch/sheet3.png
 2317849	salty-rig/look/phone_credit_line.png
 511068	salty-rig/look/pose_three.png
 558572	salty-rig/look/teeth_after/grin_front.png
