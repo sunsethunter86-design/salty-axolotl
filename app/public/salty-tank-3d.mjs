@@ -246,9 +246,10 @@ export async function createSalty3D(container, { getLevel = () => 0, getViseme =
     if (current) current.crossFadeTo(next, 0.45, false);
     current = next;
   }
+  /** Plays a one-off move; returns its length in seconds (0 if she has no such move). */
   function playMood(name) {
     const act = moves[name];
-    if (!act) return;
+    if (!act) return 0;
     act.reset();
     act.setLoop(THREE.LoopOnce, 1);
     act.clampWhenFinished = true;
@@ -258,6 +259,7 @@ export async function createSalty3D(container, { getLevel = () => 0, getViseme =
     moodName = name;
     moodT = 0;
     moodDur = act.getClip().duration;
+    return moodDur;
   }
   let moodName = null, moodT = 0, moodDur = 0;
   // Swim (Shaun, 30 Oct): her swim clip shipped in the model but the app never
@@ -452,6 +454,8 @@ export async function createSalty3D(container, { getLevel = () => 0, getViseme =
     setTalking(on) { talking = Boolean(on); if (!talking) talkT = 0; },
     playLoop,
     playMood,
+    /** True while a one-off move (think, wave, outrage…) is still playing; it returns to idle itself. */
+    moodPlaying() { return moodName !== null; },
     setExpression(name) { if (EXPR[name]) { expr = name; exprT = 0; } },
     setPaused(on) { paused = Boolean(on); if (!paused) clock.getDelta(); },
     dispose() {

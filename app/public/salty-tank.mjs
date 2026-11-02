@@ -9,7 +9,8 @@
 // remembered so a restart opens straight into the tank instead of flashing Veridity's screen first.
 
 import { onSaltyVoiceSounding, saltyVoiceSounding, saltyVoiceLevel, saltyNextSpeechViseme, saltyLegAction } from "./salty-mind.mjs";
-import { createSalty3D } from "./salty-tank-3d.mjs?v=20261102-teeth";
+import { saltyMoodFor } from "./salty-moods.mjs";
+import { createSalty3D } from "./salty-tank-3d.mjs?v=20261102-moods";
 
 const KEY = "vfl.saltyTank";
 const BASE = "./salty/";
@@ -232,9 +233,12 @@ function setMood(mood) {
   // happy loop with a laugh face. Moods like think/wave go through playMood directly.
   if (state.salty3d) {
     const d = state.salty3d;
-    if (mood === "talk") { d.playLoop("idle"); d.setExpression("neutral"); d.setTalking(true); }
+    // A reaction move (outrage, sympathy…) finishes before her body goes back to idle; it does
+    // that itself when it ends. Her mouth still follows her voice meanwhile (speech wins on it).
+    const toIdle = () => { if (!d.moodPlaying?.()) d.playLoop("idle"); };
+    if (mood === "talk") { toIdle(); d.setExpression("neutral"); d.setTalking(true); }
     else if (mood === "happy") { d.setTalking(false); d.playLoop("happy"); d.setExpression("laugh"); }
-    else { d.setTalking(false); d.playLoop("idle"); d.setExpression("neutral"); }
+    else { d.setTalking(false); toIdle(); d.setExpression("neutral"); }
     return;
   }
   const id = ++state.switchId;
@@ -483,7 +487,9 @@ function wireAppState() {
   const shell = document.querySelector(".phone-shell");
   const reply = document.getElementById("homeReplyBody");
   const micBtn = document.getElementById("micBtn");
+  const log = document.getElementById("log");
   let wasSpeaking = false;
+  let pendingMood = null;
 
   const sync = () => {
     if (!state) return;
@@ -512,8 +518,17 @@ function wireAppState() {
       // On the NPU lane her mind is off the GPU, and the freeze read as a stall on camera
       // (2 Nov): she keeps moving there, think move and all.
       state.salty3d.setPaused(!mindOnNpu && turn && !speaking);
+      // Her reaction to what he just said (salty-moods.mjs): only once a real turn is under way,
+      // so a conversation Veridity restores into its log on wake never sets her off.
+      const now = performance.now();
+      if (pendingMood && (turn || thinking) && now - pendingMood.at < 2500) {
+        const secs = state.salty3d.playMood(pendingMood.mood);
+        if (secs) state.reactUntil = now + secs * 1000;
+        pendingMood = null;
+      } else if (pendingMood && now - pendingMood.at >= 2500) pendingMood = null;
       if (thinking && !replying) {
-        if (!state.thinkShown && !speaking) { state.thinkShown = true; state.salty3d.playMood("think"); }
+        // The think move waits while a reaction is still playing, so it never cuts one off.
+        if (!state.thinkShown && !speaking && now > (state.reactUntil || 0)) { state.thinkShown = true; state.salty3d.playMood("think"); }
       } else if (!thinking) state.thinkShown = false;
       if (listening && !speaking && !replying && !thinking) state.salty3d.setExpression("smile");
     }
@@ -562,6 +577,17 @@ function wireAppState() {
   if (reply) {
     const o = new MutationObserver(sync);
     o.observe(reply, { childList: true, characterData: true, subtree: true });
+    state.observers.push(o);
+  }
+  // His words land in Veridity's log (typed and spoken alike) as .log-message.user <p>.
+  if (log) {
+    const o = new MutationObserver((records) => {
+      const added = records.flatMap((r) => [...r.addedNodes]).filter((n) => n.classList?.contains("log-message") && n.classList.contains("user"));
+      if (added.length !== 1) return; // a batch is a restored conversation, not him talking now
+      const mood = saltyMoodFor(added[0].querySelector("p")?.textContent || "");
+      if (mood) { pendingMood = { mood, at: performance.now() }; sync(); }
+    });
+    o.observe(log, { childList: true });
     state.observers.push(o);
   }
   state.cleanup.push(onSaltyVoiceSounding(sync));

@@ -27,8 +27,9 @@
 4401	app/public/licenses/NEONDERTHAW_OFL.txt
 3663	app/public/licenses/SALTY_NOTICES.txt
 24788	app/public/salty-mind.mjs
-25062	app/public/salty-tank-3d.mjs
-29684	app/public/salty-tank.mjs
+2179	app/public/salty-moods.mjs
+25331	app/public/salty-tank-3d.mjs
+31344	app/public/salty-tank.mjs
 276228	app/public/salty/Neonderthaw-Regular.ttf
 1585329	app/public/salty/loops/happy_wide_cut.webm
 5257769	app/public/salty/loops/idle_listen_cut.webm
@@ -44,6 +45,7 @@
 5194	app/scripts/helpline_guard_test.mjs
 2745	app/scripts/push_salty_dials.ps1
 21093	app/scripts/salty_mind_test.mjs
+2581	app/scripts/salty_moods_test.mjs
 3772	docs/ASSETS.md
 4142	docs/MUSE_CODE_EVIDENCE.md
 5492	experiments/salty/IDENTITY_FIX_PROPOSAL.md
