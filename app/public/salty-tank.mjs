@@ -72,7 +72,7 @@ function mount() {
   if (root || !document.body) return;
   let css = document.querySelector("link[data-salty-tank]");
   if (!css) {
-    css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261102-memory`, "data-salty-tank": "" });
+    css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261102-captions`, "data-salty-tank": "" });
     document.head.append(css);
   }
   root = el("div", "", { id: "saltyTank", role: "application", "aria-label": "Salty's tank" });
@@ -118,7 +118,7 @@ function mount() {
     <button class="st-leg st-txt" type="button" aria-label="Type to Salty"><span>txt</span></button>
     <!-- Licence duty (Llama 3.2 Community License 1.b.i) and AUP section 4, Salty-only: kept outside
          .st-stage because every press on the stage is a press on Salty (salty-tank-3d.mjs taps). -->
-    <a class="st-credit" href="./licenses/SALTY_NOTICES.txt" target="_blank" rel="noopener noreferrer">Built with Llama<span>Salty is an AI · she can be wrong</span></a>
+    <a class="st-credit" href="./licenses/SALTY_NOTICES.txt" target="_blank" rel="noopener noreferrer">Built with Llama<span class="st-credit-muse">coded with Muse Wonder</span><span>Salty is an AI · she can be wrong</span></a>
     <button class="st-mem" type="button" aria-label="What Salty remembers about you">🐚 <span class="st-mem-n"></span></button>
     <div class="st-memcard" role="dialog" aria-label="What Salty remembers" hidden>
       <div class="st-memhead"><b>What Salty remembers</b><button class="st-memclose" type="button" aria-label="Close">×</button></div>
@@ -126,6 +126,7 @@ function mount() {
       <p class="st-memnote">Kept only on this phone, never sent anywhere. Things you tell her now, she remembers from the next time she wakes up.</p>
       <button class="st-memforget" type="button">Forget everything</button>
     </div>
+    <div class="st-caps" aria-live="polite" hidden><div class="st-cap-you"></div><div class="st-cap-her"></div></div>
     <div class="st-panel" aria-hidden="true">
       <div class="st-tile">
         <button class="st-close" type="button" aria-label="Close">×</button>
@@ -142,7 +143,8 @@ function mount() {
   const q = (s) => root.querySelector(s);
   state = {
     stage: q(".st-stage"), tank: q(".st-tank"), videos: [...root.querySelectorAll(".st-tank video")],
-    mic: q(".st-mic"), txt: q(".st-txt"), credit: q(".st-credit"), panel: q(".st-panel"), you: q(".st-you"), her: q(".st-her"),
+    mic: q(".st-mic"), txt: q(".st-txt"), credit: q(".st-credit"), neon: q(".st-neon"), neonGlow: q(".st-neonglow"),
+    caps: q(".st-caps"), capYou: q(".st-cap-you"), capHer: q(".st-cap-her"), panel: q(".st-panel"), you: q(".st-you"), her: q(".st-her"),
     line: q(".st-line"), kb: q(".st-kb"),
     front: null, target: null, mood: "idle", typed: "", shift: true, symbols: false, happyTimer: 0,
     switchId: 0, salty3d: null, thinkShown: false, tapAlt: false,
@@ -339,8 +341,16 @@ function placeLegs() {
     xs.push(x);
   }
   // The credit line sits level with the buttons, centred in the gap between them.
-  state.credit.style.left = `${(xs[0] + xs[1]) / 2}px`; state.credit.style.top = `${y}px`;
+  const mid = (xs[0] + xs[1]) / 2;
+  state.credit.style.left = `${mid}px`; state.credit.style.top = `${y}px`;
   state.credit.style.maxWidth = `${Math.max(120, xs[1] - xs[0] - size - 16)}px`;
+  // ☠️ Her neon sign is placed on the room art (stage %), the buttons on the screen: in portrait
+  // the stage overhangs the screen unevenly, so the sign sat ~5% left of the buttons' middle
+  // (Shaun, 2 Nov). It now takes the same middle, as a stage % so it still rides the stage.
+  if (r.width > 0) {
+    const pct = `${((mid - r.left) / r.width) * 100}%`;
+    state.neon.style.left = pct; state.neonGlow.style.left = pct;
+  }
 }
 
 // ---------- controls ----------
@@ -613,6 +623,32 @@ function wireAppState() {
     if (speaking) wasSpeaking = true;
     else if (!replying) wasSpeaking = false;
     showHer(thinking && !replying);
+    showCaptions(thinking && !replying, replying || speaking);
+  };
+
+  // Live captions: only for a turn that started while she was up (capTurn), never a reply restored
+  // into Veridity's card at boot. Her words follow the reply as it streams; the last ~150 characters
+  // show, so a long reply keeps its newest line in view. Fades out 5 s after she finishes.
+  let capTurn = false, capBusy = false, capHide = 0;
+  const tail = (s, n) => (s.length <= n ? s : `…${s.slice(s.length - n).replace(/^\S*\s/, "")}`);
+  const showCaptions = (waiting, talking) => {
+    if (!capTurn) return;
+    let text = (reply?.textContent || "").trim();
+    if (/her reply appears here/i.test(text)) text = "";
+    if (waiting || talking) capBusy = true;
+    if (waiting) state.capHer.textContent = "…";
+    else if (talking && text) state.capHer.textContent = tail(text, 150);
+    // Fade only once she has actually thought or spoken: his words land a moment before she starts.
+    if (capBusy && !waiting && !talking && !capHide) {
+      if (text) state.capHer.textContent = tail(text, 150);
+      capHide = setTimeout(() => { capHide = 0; capTurn = false; capBusy = false; if (state) state.caps.hidden = true; }, 5000);
+    }
+  };
+  const captionYou = (words) => {
+    clearTimeout(capHide); capHide = 0; capTurn = true; capBusy = false;
+    state.capYou.textContent = `You: ${tail(words.trim(), 90)}`;
+    state.capHer.textContent = "";
+    state.caps.hidden = false;
   };
 
   const showHer = (waiting) => {
@@ -645,6 +681,7 @@ function wireAppState() {
       const added = records.flatMap((r) => [...r.addedNodes]).filter((n) => n.classList?.contains("log-message") && n.classList.contains("user"));
       if (added.length !== 1) return; // a batch is a restored conversation, not him talking now
       const words = added[0].querySelector("p")?.textContent || "";
+      if (words.trim()) captionYou(words);
       const mood = saltyMoodFor(words);
       // What he tells her now is kept for next time (salty-memory.mjs; rules on his words only).
       const kept = captureFromWords(memory, words, { mood });

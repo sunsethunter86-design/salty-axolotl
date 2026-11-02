@@ -103,7 +103,22 @@ html:has(#saltyTank:not(.st-yield)) #orbView { visibility: hidden !important; }
                         font: 600 13px/1.15 system-ui, sans-serif; letter-spacing: .03em; color: #f3ece6; text-align: center;
                         text-decoration: none; text-shadow: 0 1px 3px rgba(0, 0, 0, .85); -webkit-tap-highlight-color: transparent; }
 #saltyTank .st-credit span { font-weight: 400; font-size: 11px; opacity: .78; }
+#saltyTank .st-credit .st-credit-muse { font-weight: 600; font-size: 12px; opacity: .92; }
 #saltyTank.typing .st-credit { opacity: 0; pointer-events: none; }
+/* Live captions (2 Nov): his words and hers in the empty wall space at the top, for the muted video and for anyone
+   who can't hear her. Filled by wireAppState(); fades out a few seconds after she finishes. */
+#saltyTank .st-caps { position: absolute; left: 14px; right: 14px; top: calc(env(safe-area-inset-top, 0px) + 66px); z-index: 3;
+                      margin: 0 auto; max-width: 560px; padding: 10px 14px; border-radius: 16px; text-align: center;
+                      background: rgba(18, 12, 30, .46); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+                      color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .7); pointer-events: none;
+                      transition: opacity .5s ease; opacity: 1; }
+#saltyTank .st-caps[hidden] { display: block; opacity: 0; }
+#saltyTank .st-cap-you { font: italic 400 13px/1.3 system-ui, sans-serif; opacity: .78; }
+#saltyTank .st-cap-you:empty { display: none; }
+#saltyTank .st-cap-you:not(:empty) + .st-cap-her { margin-top: 4px; }
+#saltyTank .st-cap-her { font: 500 18px/1.32 system-ui, sans-serif; }
+#saltyTank .st-cap-her:empty { display: none; }
+#saltyTank.typing .st-caps, #saltyTank .st-memcard:not([hidden]) ~ .st-caps { opacity: 0; }
 /* What she remembers (salty-memory.mjs): a shell button, top left, and its card. Outside .st-stage, so not a tap on her. */
 #saltyTank .st-mem { position: absolute; left: 14px; top: calc(env(safe-area-inset-top, 0px) + 14px); z-index: 4;
                      display: flex; align-items: center; gap: 4px; height: 40px; min-width: 40px; padding: 0 12px; border-radius: 20px;

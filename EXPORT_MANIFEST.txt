@@ -30,7 +30,7 @@
 25702	app/public/salty-mind.mjs
 2179	app/public/salty-moods.mjs
 25331	app/public/salty-tank-3d.mjs
-34845	app/public/salty-tank.mjs
+37107	app/public/salty-tank.mjs
 276228	app/public/salty/Neonderthaw-Regular.ttf
 1585329	app/public/salty/loops/happy_wide_cut.webm
 5257769	app/public/salty/loops/idle_listen_cut.webm
@@ -38,7 +38,7 @@
 408036	app/public/salty/reef_inside.jpg
 1827458	app/public/salty/reef_inside.png
 73847	app/public/salty/room.jpg
-18938	app/public/salty/salty-tank.css
+20252	app/public/salty/salty-tank.css
 9053752	app/public/salty/salty_phone.glb
 53770	app/public/salty/studio_env.png
 1081	app/public/salty/vendor/THREE_LICENSE.txt
@@ -222,8 +222,13 @@
 2071	salty-rig/lash_study.py
 1813	salty-rig/look.py
 398907	salty-rig/look/anim_sheet.png
+367500	salty-rig/look/captions/still.png
 885666	salty-rig/look/face_sheet.png
 635446	salty-rig/look/launch/sheet3.png
+2067062	salty-rig/look/memory_card.png
+333543	salty-rig/look/moods/sheet1.png
+371327	salty-rig/look/moods/sheet2.png
+386357	salty-rig/look/moods/sheet3.png
 2317849	salty-rig/look/phone_credit_line.png
 511068	salty-rig/look/pose_three.png
 558572	salty-rig/look/teeth_after/grin_front.png
