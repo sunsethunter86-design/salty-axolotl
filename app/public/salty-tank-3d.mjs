@@ -11,7 +11,7 @@
 // bloodworms, quirks) is salty-life.mjs (3 Nov), layered on the clips here.
 
 import { THREE, GLTFLoader } from "./salty/vendor/three-gltf.mjs";
-import { createSaltyLife } from "./salty-life.mjs?v=20261103-life";
+import { createSaltyLife } from "./salty-life.mjs?v=20261103-life2";
 
 const GLB_URL = "./salty/salty_phone.glb?v=20261102-teeth";
 const ENV_URL = "./salty/studio_env.png";

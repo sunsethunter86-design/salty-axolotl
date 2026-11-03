@@ -52,7 +52,7 @@ export function createSaltyLife(rig) {
 
   // ---------- where she is ----------
   const pos = home.clone();
-  let yaw = 0, pitch = 0, roll = 0, yawRate = 0, speed = 0, swimPose = 0;
+  let yaw = 0, pitch = 0, roll = 0, yawRate = 0, speed = 0, swimPose = 0, turnDir = 0;
   // Where she settles: a little different after every swim, so her resting pose isn't the same all day.
   const spot = { x: 0, yaw: 0 };
   const restPos = (into) => into.set(home.x + spot.x, home.y, home.z);
@@ -224,6 +224,9 @@ export function createSaltyLife(rig) {
     yaw = damp(wrap(yaw), 0, 3, dt); pitch = damp(pitch, 0, 3, dt); roll = damp(roll, 0, 4, dt); yawRate = 0;
     swimPose = damp(swimPose, 0, 3, dt);
     restPos(tmpA);
+    // Nothing left to eat: dinner's over, whatever else is going on. (☠️ Held when the last worm went, she
+    // used to stay in "eat" for good: no swims, no quirks, 3 Nov on the phone.)
+    if (!strike && !worms.some((w) => hungryWorm(w) || w.state === "caught")) { finishMeal(); return; }
     // He's talking to her: dinner waits (the worms keep sinking), she faces him.
     if (held) { strike = null; settle(dt, tmpA, 3); return; }
     if (strike) { runStrike(dt); return; }
@@ -276,7 +279,7 @@ export function createSaltyLife(rig) {
     worms.length = 0;
     mode = "rest";
     tourIn = Math.max(tourIn, rand(25, 40));
-    if (bites) startQuirk("wiggle", true);   // a happy wiggle after dinner
+    if (bites && !held) startQuirk("wiggle", true);   // a happy wiggle after dinner
     bites = 0;
   }
 
@@ -315,8 +318,14 @@ export function createSaltyLife(rig) {
     // right behind her flipped from one side to the other as she moved, so she turned back and forth
     // through facing you and circled out through the glass. The shortest turn, always; only when she has
     // to turn right round does she pick the way that faces you on the way past.
+    // ☠️ AND SHE SWAM OUT THROUGH THE GLASS (3 Nov, phone: 1,100 units in front of the camera, gone). Facing
+    // you with the next point right behind her, both ways round "pass the front", so the pick flipped every
+    // frame, the turn cancelled itself and she kept going. A big turn now commits to one way until it's done.
     let d = wrap(Math.atan2(tmpA.x, tmpA.z) - yaw);
-    if (Math.abs(d) > 2.4) { const alt = d - Math.sign(d) * TAU; if (facesFront(yaw, alt) && !facesFront(yaw, d)) d = alt; }
+    if (Math.abs(d) > 2.2) {
+      if (!turnDir) { const alt = d - Math.sign(d) * TAU; turnDir = Math.sign(facesFront(yaw, alt) && !facesFront(yaw, d) ? alt : d) || 1; }
+      if (Math.sign(d) !== turnDir) d -= Math.sign(d) * TAU;
+    } else if (Math.abs(d) < 1.2) turnDir = 0;
     const wantPitch = clamp(Math.atan2(tmpA.y, Math.max(Math.hypot(tmpA.x, tmpA.z), 1)), -0.6, 0.7);
     yawRate = damp(yawRate, clamp(d * 2.4, -1.7, 1.7), 5, dt);
     yaw += yawRate * dt;
@@ -352,6 +361,10 @@ export function createSaltyLife(rig) {
   }
   function updateTour(dt) {
     const r = route;
+    // However her steering goes, a swim ends: home after 40 s out, and landed 12 s after heading home.
+    r.t = (r.t || 0) + dt;
+    if (r.t > 40 && r.stage !== "home") goHome(false);
+    if (r.stage === "home") { r.homeT = (r.homeT || 0) + dt; if (r.homeT > 12) r.landing = true; }
     rig.clipSpeed?.(r.stage === "swim" || (r.stage === "home" && !r.landing) ? 0.7 + speed / 150 : 1);
     if (r.stage === "swim") {
       swimPose = damp(swimPose, 1, 2, dt);
@@ -637,6 +650,8 @@ export function createSaltyLife(rig) {
     if (mode === "tour") updateTour(dt);
     else if (mode === "eat") updateEat(dt);
     else updateRest(dt, s);
+    // Walls: never out of her tank, whatever happens above (the glass is about 90 in front of her spot).
+    pos.x = clamp(pos.x, -240, 240); pos.y = clamp(pos.y, home.y - 70, home.y + 150); pos.z = clamp(pos.z, -300, home.z + 90);
     if (quirk) runQuirk(dt);
     pose(dt);
     updateWorms(dt);
@@ -655,6 +670,8 @@ export function createSaltyLife(rig) {
     // Test hooks (phone checks and video retakes over CDP).
     swim: () => startTour("laps"),
     quirk: (name) => startQuirk(name),
+    /** Tests only: put her at [x, y, z] facing `yaw` (0 = you), mid-whatever she's doing. */
+    place: (at, heading = 0) => { pos.set(...at); yaw = heading; yawRate = 0; turnDir = 0; },
     /** No swims for this many seconds (a take that needs her in close-up). */
     calm: (secs) => { tourIn = Math.max(tourIn, secs); return true; },
     quirks: () => Object.keys(QUIRKS),

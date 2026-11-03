@@ -41,7 +41,7 @@ Timeline note: the style spec, eval rubric and held-out prompts were drafted on 
 | Path | What |
 |---|---|
 | `app/public/` | Salty's web layer inside the app, her tank assets, and licences |
-| `app/scripts/` | Tests: `salty_mind_test.mjs` (mutation-tested), `salty_memory_test.mjs`, `salty_moods_test.mjs`, `salty_care_test.mjs`, `helpline_guard_test.mjs`; `push_salty_dials.ps1` |
+| `app/scripts/` | Tests: `salty_mind_test.mjs` (mutation-tested), `salty_memory_test.mjs`, `salty_moods_test.mjs`, `salty_care_test.mjs`, `salty_life_test.mjs` (her swims, dinner and quirks on a simulated clock), `helpline_guard_test.mjs`; `push_salty_dials.ps1` |
 | `app/android/app/native-hex/` | `vfhex_jni.cpp` (llama.cpp Hexagon bridge) and its build script |
 | `experiments/salty/` | Style, training configs and scripts, eval set, recorded runs and scores, NPU research and reports |
 | `salty-rig/` | Blender scripts for her 3D body, the Meshy base and the exported animated model |
@@ -55,7 +55,7 @@ Run the tests (Node 20+):
 cd app
 node scripts/salty_mind_test.mjs
 node scripts/helpline_guard_test.mjs
-node --test scripts/salty_memory_test.mjs scripts/salty_moods_test.mjs scripts/salty_care_test.mjs
+node --test scripts/salty_memory_test.mjs scripts/salty_moods_test.mjs scripts/salty_care_test.mjs scripts/salty_life_test.mjs
 ```
 
 ## What is not here, and why

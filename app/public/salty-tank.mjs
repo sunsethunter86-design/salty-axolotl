@@ -13,7 +13,7 @@ import { saltyMoodFor } from "./salty-moods.mjs";
 import { setSaltyMemory } from "./salty-mind.mjs";
 import { loadSaltyMemory, saveSaltyMemory, forgetSaltyMemory, forgetSaltyNote, captureFromWords, memoryPromptLine, recallNoteFor } from "./salty-memory.mjs";
 import { loadCare, saveCare, feed, noticed, restFaceOf, moodOf, careNoteFor, shouldGreet, greetingCue, isGreetingCue } from "./salty-care.mjs";
-import { createSalty3D } from "./salty-tank-3d.mjs?v=20261103-life";
+import { createSalty3D } from "./salty-tank-3d.mjs?v=20261103-life2";
 
 const KEY = "vfl.saltyTank";
 const BASE = "./salty/";
@@ -121,7 +121,7 @@ function mount() {
   if (root || !document.body) return;
   let css = document.querySelector("link[data-salty-tank]");
   if (!css) {
-    css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261103-life`, "data-salty-tank": "" });
+    css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261103-life2`, "data-salty-tank": "" });
     document.head.append(css);
   }
   root = el("div", "", { id: "saltyTank", role: "application", "aria-label": "Salty's tank" });
@@ -151,7 +151,7 @@ function mount() {
     </svg>
     <div class="st-bg"></div>
     <div class="st-stage">
-      <img class="st-room" src="${BASE}room.jpg" alt="">
+      <img class="st-room" src="${BASE}room_soft.png" alt="">
       <div class="st-lamp halo"></div><div class="st-lamp cone"></div><div class="st-lamp shade"></div><div class="st-lamp rim"></div>
       <div class="st-tank">
         <img class="st-reef" src="${BASE}reef_inside.png" alt="">
@@ -400,10 +400,6 @@ function setWide(on, quick = false) {
   root.style.setProperty("--st-zoom-t", quick ? ".8s" : "2.2s");
   root.style.setProperty("--st-zoom-ease", "cubic-bezier(.45, 0, .25, 1)");
   root.classList.toggle("st-wide", on);
-  // The soft edges stay until the stage is all the way back in.
-  clearTimeout(state.zoomedTimer);
-  if (on) root.classList.add("st-zoomed");
-  else state.zoomedTimer = setTimeout(() => root?.classList.remove("st-zoomed"), quick ? 850 : 2250);
 }
 
 // How much of her tank the close-up shows, as half-extents (1 = all of it): the 3D layer keeps her resting
@@ -501,7 +497,7 @@ function hideForNow() {
 
 function openTyping(open) {
   // Typing to her is time with her: she comes home, and the panel slides at its own quick pace.
-  if (open) { root.style.removeProperty("--st-zoom-t"); root.style.removeProperty("--st-zoom-ease"); root.classList.remove("st-wide", "st-zoomed"); }
+  if (open) { root.style.removeProperty("--st-zoom-t"); root.style.removeProperty("--st-zoom-ease"); root.classList.remove("st-wide"); }
   root.classList.toggle("typing", open);
   state.salty3d?.setBusy(open || state.busy);
   state.panel.setAttribute("aria-hidden", String(!open));
@@ -813,9 +809,12 @@ function wireAppState() {
       // On the NPU lane her mind is off the GPU, and the freeze read as a stall on camera
       // (2 Nov): she keeps moving there, think move and all.
       state.salty3d.setPaused(!mindOnNpu && turn && !speaking);
-      // He's with her (listening, a turn under way, her reply, typing): no swims or quirks, she comes
-      // home and faces him (salty-life.mjs).
-      state.busy = listening || thinking || turn || replying || speaking;
+      // He's with her (a turn under way, her reply, typing): no swims or quirks, she comes home and
+      // faces him (salty-life.mjs).
+      // ☠️ NOT AN OPEN MIC (3 Nov, phone): Veridity's live mic can sit listening for ages, and counting it
+      // froze her life, stuck mid-meal with no worms left. She smiles while it listens; his words landing
+      // start a turn, and that brings her home.
+      state.busy = thinking || turn || replying || speaking;
       state.salty3d.setBusy(state.busy || root.classList.contains("typing"));
       // Her reaction to what he just said (salty-moods.mjs): only once a real turn is under way,
       // so a conversation Veridity restores into its log on wake never sets her off.
