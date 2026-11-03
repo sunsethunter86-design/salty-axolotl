@@ -13,7 +13,7 @@ import { saltyMoodFor } from "./salty-moods.mjs";
 import { setSaltyMemory } from "./salty-mind.mjs";
 import { loadSaltyMemory, saveSaltyMemory, forgetSaltyMemory, forgetSaltyNote, captureFromWords, memoryPromptLine, recallNoteFor } from "./salty-memory.mjs";
 import { loadCare, saveCare, feed, noticed, restFaceOf, moodOf, careNoteFor, shouldGreet, greetingCue, isGreetingCue } from "./salty-care.mjs";
-import { createSalty3D } from "./salty-tank-3d.mjs?v=20261102-care";
+import { createSalty3D } from "./salty-tank-3d.mjs?v=20261103-life";
 
 const KEY = "vfl.saltyTank";
 const BASE = "./salty/";
@@ -121,7 +121,7 @@ function mount() {
   if (root || !document.body) return;
   let css = document.querySelector("link[data-salty-tank]");
   if (!css) {
-    css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261102-care2`, "data-salty-tank": "" });
+    css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261103-life`, "data-salty-tank": "" });
     document.head.append(css);
   }
   root = el("div", "", { id: "saltyTank", role: "application", "aria-label": "Salty's tank" });
@@ -137,7 +137,8 @@ function mount() {
   // and revealing her caught it mid-slide. No transitions while the sheet is pending.
   root.className = "st-css-pending";
   // Two frames after the sheet lands, so a style pass has already run with transitions off.
-  const ready = () => requestAnimationFrame(() => requestAnimationFrame(() => root?.classList.remove("st-css-pending")));
+  // The buttons are placed from the stage's size, which only exists once the sheet has landed: place them again then.
+  const ready = () => requestAnimationFrame(() => requestAnimationFrame(() => { root?.classList.remove("st-css-pending"); placeLegs(); }));
   if (css.sheet) ready();
   else { css.addEventListener("load", ready, { once: true }); css.addEventListener("error", ready, { once: true }); }
   root.innerHTML = `
@@ -237,6 +238,9 @@ async function init3D() {
         mine.tapAlt = !mine.tapAlt;
         mine.salty3d?.playMood(mine.tapAlt ? "wave" : "wink");
       },
+      // Her swims round the tank (salty-life.mjs): the tank pulls back to show all of it.
+      onWide: (on, quick) => { if (state === mine) setWide(on, quick); },
+      getView: () => tankView(),
     });
     if (!state || state !== mine) { api.dispose(); return; }
     mine.salty3d = api;
@@ -379,10 +383,41 @@ function systemBars() {
   return bars;
 }
 
+// ---------- her swims: the tank pulls back to show all of it ----------
+//
+// In portrait the close-up crops the tank to its middle half, and her laps (salty-life.mjs) go end to end.
+// While she's out the stage scales about the tank's centre (salty-tank.css .st-wide) until the whole tank
+// fits the screen, and comes back in as she heads home: quick when he interrupts her. Landscape already
+// shows the whole tank, so nothing moves there. The buttons stay put meanwhile (placeLegs skips).
+function setWide(on, quick = false) {
+  if (!state || on === root.classList.contains("st-wide")) return;
+  if (on) {
+    const r = state.tank.getBoundingClientRect();
+    const s = Math.min(1, (window.innerWidth - 24) / r.width, (window.innerHeight * 0.7) / r.height);
+    if (!(s < 0.97)) return;
+    root.style.setProperty("--st-wide", s.toFixed(3));
+  }
+  root.style.setProperty("--st-zoom-t", quick ? ".8s" : "2.2s");
+  root.style.setProperty("--st-zoom-ease", "cubic-bezier(.45, 0, .25, 1)");
+  root.classList.toggle("st-wide", on);
+  // The soft edges stay until the stage is all the way back in.
+  clearTimeout(state.zoomedTimer);
+  if (on) root.classList.add("st-zoomed");
+  else state.zoomedTimer = setTimeout(() => root?.classList.remove("st-zoomed"), quick ? 850 : 2250);
+}
+
+// How much of her tank the close-up shows, as half-extents (1 = all of it): the 3D layer keeps her resting
+// spot and her worms inside it. From the tank's layout size, which no zoom changes (the tank is centred).
+function tankView() {
+  const t = state?.tank;
+  if (!t?.offsetWidth || !t.offsetHeight) return { x: 1, y: 1 };
+  return { x: Math.min(1, window.innerWidth / t.offsetWidth), y: Math.min(1, window.innerHeight / t.offsetHeight) };
+}
+
 // Buttons sit on the table legs. In portrait the legs run off the sides of the screen, so the
 // buttons are held inside it (a 16px gutter plus half a button, clear of the system bars), still low on the table.
 function placeLegs() {
-  if (!state) return;
+  if (!state || root.classList.contains("st-wide")) return;
   const bars = systemBars();
   const r = state.stage.getBoundingClientRect();
   const vw = window.innerWidth, vh = window.innerHeight;
@@ -465,7 +500,10 @@ function hideForNow() {
 }
 
 function openTyping(open) {
+  // Typing to her is time with her: she comes home, and the panel slides at its own quick pace.
+  if (open) { root.style.removeProperty("--st-zoom-t"); root.style.removeProperty("--st-zoom-ease"); root.classList.remove("st-wide", "st-zoomed"); }
   root.classList.toggle("typing", open);
+  state.salty3d?.setBusy(open || state.busy);
   state.panel.setAttribute("aria-hidden", String(!open));
   if (open) { state.shift = state.typed === ""; renderKeyboard(); }
   setTimeout(placeLegs, 480);
@@ -585,6 +623,20 @@ const lastGreetAt = () => { try { return Number(localStorage.getItem(GREET_AT_KE
 // return can be checked without waiting hours. Only touches her own care record on this phone.
 globalThis.__saltyCareTest = {
   backdate(hours) { care = { ...care, lastSeenAt: Date.now() - hours * 3600e3 }; saveCare(care); applyRestFace(); return care.lastSeenAt; },
+  // Retakes of feeding her: forget this hour's feeds, so she isn't "stuffed", and/or pretend she was last fed
+  // `hours` ago, so she's hungry again (10 h+ is starving).
+  unstuff() { care = { ...care, feeds: [] }; saveCare(care); return true; },
+  starve(hours) { care = { ...care, lastFedAt: Date.now() - hours * 3600e3, feeds: [] }; saveCare(care); applyRestFace(); return care.lastFedAt; },
+};
+// Her life in the tank on demand (salty-life.mjs), for phone checks and video retakes over CDP:
+// swim() a lap of the tank, quirk("yawn"|"bubble"|"peek"|...) one of her quirks, calm(secs) no swims for a
+// while (a close-up take), state() what she's up to.
+globalThis.__saltyTankTest = {
+  swim: () => Boolean(state?.salty3d?.swimNow()),
+  quirk: (name) => Boolean(state?.salty3d?.quirkNow(name)),
+  calm: (secs = 120) => Boolean(state?.salty3d?.calm(secs)),
+  quirks: () => state?.salty3d?.quirkNames() || [],
+  state: () => state?.salty3d?.lifeState() || null,
 };
 
 /** Greets him once her mind is ready, if he has been gone long enough; gives up after `waitMs`. */
@@ -637,10 +689,13 @@ function wireCare() {
     const r = feed(care);
     care = r.care;
     saveCare(care);
-    if (r.result === "stuffed") { toast("She's stuffed. Maybe later."); applyRestFace(); return; }
-    dropWorms();
-    // She lunges for them as they reach her (the celebrate move: mouth wide, arms out).
-    setTimeout(() => { if (state && state.mood !== "talk") state.salty3d?.playMood("celebrate"); }, 1500);
+    if (r.result === "stuffed") { toast("She's stuffed. Maybe later."); state.salty3d?.quirkNow("full"); applyRestFace(); return; }
+    // 3D (3 Nov): real worms sink in front of her and she snaps them up one by one (salty-life.mjs).
+    // Video fallback: emoji worms drift to her mouth and she lunges (the celebrate move).
+    if (!state.salty3d?.feed(6)) {
+      dropWorms();
+      setTimeout(() => { if (state && state.mood !== "talk") state.salty3d?.playMood("celebrate"); }, 1500);
+    }
     applyRestFace();
   });
   state.timers.push(setInterval(applyRestFace, 60e3));
@@ -758,6 +813,10 @@ function wireAppState() {
       // On the NPU lane her mind is off the GPU, and the freeze read as a stall on camera
       // (2 Nov): she keeps moving there, think move and all.
       state.salty3d.setPaused(!mindOnNpu && turn && !speaking);
+      // He's with her (listening, a turn under way, her reply, typing): no swims or quirks, she comes
+      // home and faces him (salty-life.mjs).
+      state.busy = listening || thinking || turn || replying || speaking;
+      state.salty3d.setBusy(state.busy || root.classList.contains("typing"));
       // Her reaction to what he just said (salty-moods.mjs): only once a real turn is under way,
       // so a conversation Veridity restores into its log on wake never sets her off.
       const now = performance.now();

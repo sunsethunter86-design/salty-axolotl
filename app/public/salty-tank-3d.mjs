@@ -7,9 +7,11 @@
 //
 // Her face, moods and blink are the viewer's (D:\MuseTest\salty-rig\salty-3d-anim.html), proven
 // there on 29 Oct. Her mouth is driven by her real voice level (salty-mind.mjs saltyVoiceLevel),
-// not the viewer's test syllables.
+// not the viewer's test syllables. Her life between conversations (swims round the tank, eating her
+// bloodworms, quirks) is salty-life.mjs (3 Nov), layered on the clips here.
 
 import { THREE, GLTFLoader } from "./salty/vendor/three-gltf.mjs";
+import { createSaltyLife } from "./salty-life.mjs?v=20261103-life";
 
 const GLB_URL = "./salty/salty_phone.glb?v=20261102-teeth";
 const ENV_URL = "./salty/studio_env.png";
@@ -73,10 +75,13 @@ const FALLBACK_VISEMES = ["a", "e", "a", "o", "e", "i", "a", "o"];
  * - getLevel(): her voice level, 0..1 (0 = quiet). Read every frame while she talks.
  * - getViseme(): her next syllable shape from her actual words, asked once per syllable.
  * - onTap(): she was tapped (the tank turns this into a wave/wink).
- * Returns { setTalking, playLoop, playMood, setExpression, setPaused, dispose }.
+ * - onWide(on, quick): she's swimming laps, show the whole tank (on), or she's coming home (off).
+ * - getView(): how much of the tank the screen shows, as { x, y } half-extents (1 = all of it).
+ * Returns { setTalking, setBusy, feed, playLoop, playMood, setExpression, setPaused, dispose, ... }.
  * Throws if WebGL or the model cannot load: the caller falls back to video.
  */
-export async function createSalty3D(container, { getLevel = () => 0, getViseme = () => null, onTap = () => {} } = {}) {
+export async function createSalty3D(container, { getLevel = () => 0, getViseme = () => null, onTap = () => {},
+  onWide = () => {}, getView = () => ({ x: 1, y: 1 }) } = {}) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.toneMapping = THREE.AgXToneMapping;
@@ -144,12 +149,17 @@ export async function createSalty3D(container, { getLevel = () => 0, getViseme =
   const centre = box.getCenter(new THREE.Vector3());
   model.position.sub(centre);
   model.position.y += size.y / 2;
+  // Her pivot (3 Nov): she now turns, climbs and banks as she swims, so the group's origin sits at
+  // her middle instead of under her feet. Her rest pose on the sand is unchanged.
+  const PIVOT_Y = size.y * 0.47;
+  model.position.y -= PIVOT_Y;
   group.add(model);
   // ☠️ Feet on the sand, not on the reef rock (Shaun, 29 Oct). Her rest-pose floor (y=0)
   // framed her toes ~78% down the tank, standing on the coral. The sand surface in the
   // reef photo sits ~90% down, so the whole model drops by that gap; the sand-front
   // overlay (opaque from ~92%) still leaves her toes visible just above it.
-  group.position.y = -size.y * 0.17;
+  group.position.y = -size.y * 0.17 + PIVOT_Y;
+  const HOME = group.position.clone();
 
   const faceMeshes = [];
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
@@ -236,6 +246,22 @@ export async function createSalty3D(container, { getLevel = () => 0, getViseme =
     eyes.push({ key: k, lid, lash, rl: lid.quaternion.clone(), rs: lash.quaternion.clone(), al: local(lid), as: local(lash),
       alpha: THREE.MathUtils.degToRad(E.alpha), lashAlpha: THREE.MathUtils.degToRad(E.lashAlpha) });
   }
+  // For her life layer (salty-life.mjs): the bones it turns, and where her mouth is on her head, measured
+  // from her tongue and upper lip at rest, so she can aim her face at a worm and swallow it.
+  const B = { neck: bone("neck"), head: bone("head"),
+    tail: ["tail1", "tail2", "tail3", "tail4", "tail5"].map((n) => bone(n)).filter(Boolean),
+    gills: ["gill_R1", "gill_R2", "gill_R3", "gill_L1", "gill_L2", "gill_L3"].map((n) => bone(n)).filter(Boolean) };
+  group.updateMatrixWorld(true);
+  let mouthLocal = null;
+  {
+    let tongue = null, lips = null;
+    model.traverse((o) => { if (o.isMesh && o.material?.name === "tongue") tongue = o; if (o.isMesh && o.material?.name === "mouth_upper") lips = o; });
+    if (tongue && B.head) {
+      const at = tongue.geometry.boundingBox.clone().applyMatrix4(tongue.matrixWorld).getCenter(new THREE.Vector3());
+      if (lips) at.z = lips.geometry.boundingBox.clone().applyMatrix4(lips.matrixWorld).max.z - 2;
+      mouthLocal = B.head.worldToLocal(at);
+    }
+  }
 
   const mixer = new THREE.AnimationMixer(model);
   const moves = {};
@@ -267,8 +293,17 @@ export async function createSalty3D(container, { getLevel = () => 0, getViseme =
   }
   let moodName = null, moodT = 0, moodDur = 0;
   // Swim (Shaun, 30 Oct): her swim clip shipped in the model but the app never
-  // called it — she idled forever. Idle variety below plays it now and then.
-  let idleTime = 0, swimTime = 0, nextSwimAt = 14;
+  // called it — she idled forever. Since 3 Nov salty-life.mjs plays it for real
+  // swims round the tank, along with her eating and her quirks.
+  let busy = false;
+  const life = createSaltyLife({
+    THREE, scene, camera, group, home: HOME, halfLength: size.z / 2, bones: B, mouthLocal,
+    playLoop, playMood, moodPlaying: () => moodName !== null, clip: () => current?.getClip().name || "",
+    clipSpeed: (x) => { if (moves.swim) moves.swim.timeScale = x; }, onWide, view: getView,
+    compile: () => renderer.compile(scene, camera),
+  });
+  const lifeMouth = Object.fromEntries(MOUTH_KEYS.map((k) => [k, 0]));
+  let lifeLids = 0;
 
   let expr = "neutral", exprT = 0, talking = false, talkT = 0;
   // Her resting face: what "rest" means to setExpression (neutral, or sulk/hungry from her care loop).
@@ -356,22 +391,29 @@ export async function createSalty3D(container, { getLevel = () => 0, getViseme =
       if (moodT >= moodDur) { moodName = null; playLoop("idle"); }
     }
     if (E.laugh) tgt.jaw_open = 0.5 + 0.32 * Math.abs(Math.sin(exprT * Math.PI * 3.2));
+    // Her life layer's face (salty-life.mjs): a smile as she eats, a frown when she huffs, a pout...
+    const L = life.out;
+    if (L.keysW > 0) for (const k in L.keys) tgt[k] += (L.keys[k] - tgt[k]) * L.keysW;
     // Speech runs on real time, not the mixer's clamped step: at low frame rates
     // her mouth must still keep up with her voice instead of slowing down.
     updateMouth(dtReal);
     for (const k of FACE_KEYS) faceNow[k] += (tgt[k] - faceNow[k]) * Math.min(1, dt * 14);
+    // ...and its mouth (a snap at a worm, a yawn, a bubble), fast enough for a snap.
+    for (const k of MOUTH_KEYS) lifeMouth[k] += ((L.mouth[k] || 0) - lifeMouth[k]) * Math.min(1, dtReal * 40);
     for (const m of faceMeshes) for (const k of FACE_KEYS) {
       const i = m.morphTargetDictionary[k];
       // Speech wins over the expression on the mouth morphs, at its own faster rate.
-      if (i !== undefined) m.morphTargetInfluences[i] = MOUTH_KEYS.includes(k) ? Math.max(faceNow[k], mouthNow[k]) : faceNow[k];
+      if (i !== undefined) m.morphTargetInfluences[i] = MOUTH_KEYS.includes(k) ? Math.max(faceNow[k], mouthNow[k], lifeMouth[k]) : faceNow[k];
     }
     lidExpr += ((E.lids || 0) - lidExpr) * Math.min(1, dt * 8);
-    if (clockT > nextBlink) { blinkStart = clockT; nextBlink = clockT + 2.2 + Math.random() * 4; }
+    lifeLids += (L.lids - lifeLids) * Math.min(1, dtReal * 12);
+    if (L.blink && clockT - blinkStart > 0.4) nextBlink = clockT;
+    if (clockT >= nextBlink) { blinkStart = clockT; nextBlink = clockT + 2.2 + Math.random() * 4; }
     const bt = clockT - blinkStart;
     const blink = bt < 0.09 ? bt / 0.09 : bt < 0.13 ? 1 : bt < 0.27 ? 1 - (bt - 0.13) / 0.14 : 0;
     for (const e of eyes) {
       const base = moodLids ? moodLids[e.key] : lidExpr;
-      const close = Math.max(base, blink);
+      const close = Math.max(base, blink, lifeLids);
       e.lid.quaternion.copy(e.rl).multiply(qTmp.setFromAxisAngle(e.al, close * e.alpha));
       // Lashes wait at the rim until the lid edge reaches them, then ride on it (viewer fix, 29 Oct).
       const lashTurn = Math.max(0, close * e.alpha - (e.alpha - e.lashAlpha));
@@ -403,39 +445,20 @@ export async function createSalty3D(container, { getLevel = () => 0, getViseme =
     if (paused) return;
     // Heat (Shaun, 30 Oct): she rendered every display frame (120 Hz panel) even
     // sitting silent, which kept the GPU hot enough to cook on. Idle now renders
-    // at 30 fps — her swim/blink still read smooth — and only speech or a mood
-    // move earns 60 fps, when her mouth needs it. getDelta below still measures
-    // the whole skipped span, so animation timing does not change.
-    const interval = (talking || moodName) ? 1000 / 60 : 1000 / 30;
+    // at 30 fps — her swim/blink still read smooth — and only speech, a mood
+    // move or a quick move of her own (snapping up a worm) earns 60 fps, when it
+    // needs it. getDelta below still measures the whole skipped span, so
+    // animation timing does not change.
+    const interval = (talking || moodName || life.fast) ? 1000 / 60 : 1000 / 30;
     if (nowMs - lastRenderMs < interval) return;
     lastRenderMs = nowMs;
     const dtRaw = clock.getDelta();
     const dt = Math.min(dtRaw, 0.05);
     mixer.update(dt);
+    // Her life (salty-life.mjs): where she is in the tank, what her head, tail and gills do on top
+    // of the clip, and what it asks of her face. Talking, a turn or a mood move holds her home.
+    life.update(dt, { talking, mood: moodName, busy, rest: restExpr });
     updateFace(dt, Math.min(dtRaw, 0.25));
-    // Idle variety: after a quiet spell she swims a while, then settles again.
-    // Talking or a mood move resets the clock, and the tank's own setMood
-    // switching (talk/happy) always wins over this. The swim clip itself only
-    // paddles in place, so she also drifts across the tank and back on a
-    // smooth arc — out and home inside the swim window, never a jump.
-    if (!talking && !moodName && moves.swim) {
-      if (current === moves.swim) {
-        swimTime += dt;
-        const p = Math.min(1, swimTime / 9);
-        group.position.x = Math.sin(p * Math.PI * 2) * size.x * 0.16;
-        group.position.y = -size.y * 0.17 + Math.sin(p * Math.PI * 4) * size.y * 0.025;
-        if (swimTime > 9) { playLoop("idle"); swimTime = 0; idleTime = 0; nextSwimAt = 16 + Math.random() * 14; group.position.x = 0; group.position.y = -size.y * 0.17; }
-      } else {
-        idleTime += dt;
-        if (idleTime > nextSwimAt) { playLoop("swim"); idleTime = 0; swimTime = 0; }
-      }
-    } else { idleTime = 0; swimTime = 0; }
-    // If a talk/mood move cut a swim short, glide home instead of jumping.
-    if (current !== moves.swim && group.position.x !== 0) {
-      group.position.x *= 0.92;
-      if (Math.abs(group.position.x) < 0.05) group.position.x = 0;
-      group.position.y += (-size.y * 0.17 - group.position.y) * 0.08;
-    }
     renderer.render(scene, camera);
   }
   frame();
@@ -447,6 +470,7 @@ export async function createSalty3D(container, { getLevel = () => 0, getViseme =
   // mic/txt buttons live outside it), so any press here is a press on Salty.
   let tapTimer = 0;
   (container.parentElement || container).addEventListener("pointerdown", () => {
+    life.poke();
     onTap();
     // Visible proof she felt it: the mood move alone read as "does nothing"
     // in a still (Shaun, 30 Oct), so she also grins for a moment, then settles.
@@ -458,6 +482,16 @@ export async function createSalty3D(container, { getLevel = () => 0, getViseme =
   return {
     canvas: renderer.domElement,
     setTalking(on) { talking = Boolean(on); if (!talking) talkT = 0; },
+    /** He's with her (listening, a turn, typing): no swims or quirks, she comes home and faces him. */
+    setBusy(on) { busy = Boolean(on); },
+    /** Real bloodworms sink in front of her and she eats them one by one (salty-life.mjs). */
+    feed(n = 6) { return life.feed(n); },
+    // Test hooks (phone checks, video retakes): a swim or a quirk on demand, and what she's up to.
+    swimNow: () => life.swim(),
+    quirkNow: (name) => life.quirk(name),
+    calm: (secs) => life.calm(secs),
+    quirkNames: () => life.quirks(),
+    lifeState: () => life.state(),
     playLoop,
     playMood,
     /** True while a one-off move (think, wave, outrage…) is still playing; it returns to idle itself. */
@@ -475,6 +509,7 @@ export async function createSalty3D(container, { getLevel = () => 0, getViseme =
       disposed = true;
       cancelAnimationFrame(raf);
       ro.disconnect();
+      life.dispose();
       scene.traverse((o) => {
         if (o.geometry) o.geometry.dispose();
         if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { for (const v of Object.values(m)) if (v && v.isTexture) v.dispose(); m.dispose(); }); }

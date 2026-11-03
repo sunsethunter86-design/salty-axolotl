@@ -27,11 +27,12 @@
 4401	app/public/licenses/NEONDERTHAW_OFL.txt
 3663	app/public/licenses/SALTY_NOTICES.txt
 6799	app/public/salty-care.mjs
+38167	app/public/salty-life.mjs
 8711	app/public/salty-memory.mjs
 25702	app/public/salty-mind.mjs
 2179	app/public/salty-moods.mjs
-26120	app/public/salty-tank-3d.mjs
-46041	app/public/salty-tank.mjs
+28568	app/public/salty-tank-3d.mjs
+49883	app/public/salty-tank.mjs
 276228	app/public/salty/Neonderthaw-Regular.ttf
 1585329	app/public/salty/loops/happy_wide_cut.webm
 5257769	app/public/salty/loops/idle_listen_cut.webm
@@ -39,7 +40,7 @@
 408036	app/public/salty/reef_inside.jpg
 1827458	app/public/salty/reef_inside.png
 73847	app/public/salty/room.jpg
-22154	app/public/salty/salty-tank.css
+23119	app/public/salty/salty-tank.css
 9053752	app/public/salty/salty_phone.glb
 53770	app/public/salty/studio_env.png
 1081	app/public/salty/vendor/THREE_LICENSE.txt
@@ -230,6 +231,7 @@
 2370834	salty-rig/look/care/sulking.png
 885666	salty-rig/look/face_sheet.png
 635446	salty-rig/look/launch/sheet3.png
+1707266	salty-rig/look/life/sheet.png
 2067062	salty-rig/look/memory_card.png
 333543	salty-rig/look/moods/sheet1.png
 371327	salty-rig/look/moods/sheet2.png
