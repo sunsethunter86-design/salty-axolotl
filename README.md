@@ -76,7 +76,7 @@ node --test scripts/salty_memory_test.mjs scripts/salty_moods_test.mjs scripts/s
 - Her memory only keeps what its rules recognise, so plenty of what you say isn't kept. She can still fill small gaps in conversation (she called the dog "she" without being told). Notes you add reach her prompt from the next session; in the same session she has the conversation itself.
 - Her sampler runs with a fixed seed, so the same conversation gets the same reply. That's handy for retakes, but she can repeat herself if you repeat yourself. She also sees the last few turns from before a restart and sometimes brings an old line back.
 - Inside the host app, the exact sentence "What do you remember about me?" is caught by the host's own memory command, which answers in its own voice. Any other phrasing ("Hey Salty, what do you remember about me?") reaches her.
-- MUSEick reads words by English rules, so a phrasing it doesn't know changes nothing. Its spoken path hasn't been tested with a person speaking.
+- MUSEick reads words by English rules, so a phrasing it doesn't know changes nothing. Its spoken path has only been tested informally: the author spoke to it by mic on the final build and it worked well, but that test wasn't logged.
 - She is an AI and can be wrong; she swears and is not meant for children. See [app/public/licenses/SALTY_NOTICES.txt](app/public/licenses/SALTY_NOTICES.txt).
 
 ## Licences and credits

@@ -267,7 +267,7 @@ someone to pull the cable.
 ## Still owed
 
 - An unplugged sustained run, and battery drain.
-- A spoken brief through the mic on the device.
+- A logged test of a spoken brief through the mic on the device. On 5 Nov the owner reported speaking to the studio by mic on the final build, and that it worked well, but there's no log of it.
 - Judging the mix on the phone speaker by ear.
 - Her replies vary with every turn, so new paraphrases will turn up. Each one found on the phone
   so far is now a test case.

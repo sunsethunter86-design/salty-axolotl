@@ -128,4 +128,4 @@ in the demo video. The mix hasn't been judged on the phone's own speaker.
 - Editing a clip and then asking for a revision of that track recomposes it, which replaces the
   edits. Undo brings them back.
 - WAV export takes ~40 s on the phone for a ~64 s song and is refused while she is speaking.
-- Music never plays while the mic is open. A spoken brief has not yet been tested on the device.
+- Music never plays while the mic is open. The owner spoke to the studio by mic on the final build and reports it worked well, but that test wasn't logged.

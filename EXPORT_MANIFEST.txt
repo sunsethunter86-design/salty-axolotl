@@ -63,8 +63,8 @@
 3772	docs/ASSETS.md
 9908	docs/MUSE_CODE_EVIDENCE.md
 3523	docs/museick/DEMO_SCRIPT.md
-8363	docs/museick/README.md
-17697	docs/museick/TEST_LOG.md
+8422	docs/museick/README.md
+17843	docs/museick/TEST_LOG.md
 5492	experiments/salty/IDENTITY_FIX_PROPOSAL.md
 2588	experiments/salty/LICENCE_NOTES.md
 3831	experiments/salty/NATIVE_PROPOSALS.md
