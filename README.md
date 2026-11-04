@@ -30,6 +30,7 @@ New for the hackathon:
 - **Live captions:** your words and hers at the top of the tank as she speaks, for watching muted and for anyone who can't hear her.
 - **She reacts with her body:** outrage, sympathy, celebrate, sleepy and wave moves play the moment your words land, before she answers ("my dog nicked a sausage" → outrage, "rough day" → sympathy, "I got the job" → celebrate). Plain rules on your words; anything unclear plays nothing. ([app/public/salty-moods.mjs](app/public/salty-moods.mjs))
 - **Her own life in the tank:** every so often she pushes off the sand and swims laps of the whole tank, turning through facing you, banking into turns, passing along the glass, then lands somewhere a little new. On a portrait phone the close-up only shows the middle of the tank, so the view pulls back to the whole room while she's out and pushes in again as she comes home. Between swims, a quirk every few seconds: she looks around, tilts her head, blows a bubble and watches it rise, hiccups, yawns, peeks at the glass, swims up to gulp air at the surface like a real axolotl, scoots to a new spot. Her moods show too: sulking, she turns her back on you; hungry, she looks up for food; at night she's drowsier. Talk, type or tap and she drops it and comes home to face you. All procedural on top of her rig's animations: a steering swimmer, head aiming held to angles that keep her face to you, suction feeding. On the phone a full swim runs at 60 fps with no dropped frames. ([app/public/salty-life.mjs](app/public/salty-life.mjs); phone frames: [salty-rig/look/life/sheet.png](salty-rig/look/life/sheet.png))
+- **MUSEick, her music studio:** describe a song and four tracks appear, synthesised on the phone with no samples. Salty names it and pushes an idea; the studio's rules write the notes, and she can't hear the music. Change it by talking, undo anything, and ordinary conversation leaves the song alone. ([app/public/museick](app/public/museick), [docs/museick](docs/museick))
 - **Her tank:** a three.js aquarium with a rigged 3D Salty whose mouth follows her real voice level and syllables, and who blinks. She keeps moving while she thinks, because her mind is on the NPU and not the GPU the tank draws with. While she's up, the host app's hidden home screen stops animating underneath her (idle CPU 89% → 32% for the app process, measured), and she launches straight into her tank with her own icon and splash. ([app/public/salty-tank.mjs](app/public/salty-tank.mjs), [app/public/salty-tank-3d.mjs](app/public/salty-tank-3d.mjs))
 - **Her body:** a Blender pipeline from a Meshy base mesh to feathery gills, skin, eyelids, lashes, mouth and teeth, a 23-bone rig and her animations. ([salty-rig](salty-rig))
 - **Her voice:** Pocket TTS shaped to a brighter, quicker cartoon voice (pitch ×1.14).
@@ -41,7 +42,7 @@ Timeline note: the style spec, eval rubric and held-out prompts were drafted on 
 | Path | What |
 |---|---|
 | `app/public/` | Salty's web layer inside the app, her tank assets, and licences |
-| `app/scripts/` | Tests: `salty_mind_test.mjs` (mutation-tested), `salty_memory_test.mjs`, `salty_moods_test.mjs`, `salty_care_test.mjs`, `salty_life_test.mjs` (her swims, dinner and quirks on a simulated clock), `helpline_guard_test.mjs`; `push_salty_dials.ps1` |
+| `app/scripts/` | Tests: `salty_mind_test.mjs` (mutation-tested), `salty_memory_test.mjs`, `salty_moods_test.mjs`, `salty_care_test.mjs`, `salty_life_test.mjs` (her swims, dinner and quirks on a simulated clock), `helpline_guard_test.mjs`, `museick_test.mjs`; `push_salty_dials.ps1` |
 | `app/android/app/native-hex/` | `vfhex_jni.cpp` (llama.cpp Hexagon bridge) and its build script |
 | `experiments/salty/` | Style, training configs and scripts, eval set, recorded runs and scores, NPU research and reports |
 | `salty-rig/` | Blender scripts for her 3D body, the Meshy base and the exported animated model |
@@ -55,6 +56,7 @@ Run the tests (Node 20+):
 cd app
 node scripts/salty_mind_test.mjs
 node scripts/helpline_guard_test.mjs
+node scripts/museick_test.mjs
 node --test scripts/salty_memory_test.mjs scripts/salty_moods_test.mjs scripts/salty_care_test.mjs scripts/salty_life_test.mjs
 ```
 
@@ -74,6 +76,7 @@ node --test scripts/salty_memory_test.mjs scripts/salty_moods_test.mjs scripts/s
 - Her memory only keeps what its rules recognise, so plenty of what you say isn't kept. She can still fill small gaps in conversation (she called the dog "she" without being told). Notes you add reach her prompt from the next session; in the same session she has the conversation itself.
 - Her sampler runs with a fixed seed, so the same conversation gets the same reply. That's handy for retakes, but she can repeat herself if you repeat yourself. She also sees the last few turns from before a restart and sometimes brings an old line back.
 - Inside the host app, the exact sentence "What do you remember about me?" is caught by the host's own memory command, which answers in its own voice. Any other phrasing ("Hey Salty, what do you remember about me?") reaches her.
+- MUSEick reads words by English rules, so a phrasing it doesn't know changes nothing. Its spoken path hasn't been tested with a person speaking.
 - She is an AI and can be wrong; she swears and is not meant for children. See [app/public/licenses/SALTY_NOTICES.txt](app/public/licenses/SALTY_NOTICES.txt).
 
 ## Licences and credits
@@ -82,5 +85,6 @@ node --test scripts/salty_memory_test.mjs scripts/salty_moods_test.mjs scripts/s
 - **llama.cpp / ggml** (MIT), **three.js** (MIT), **Pocket TTS** by Kyutai and **VCTK** voice material (CC BY 4.0), **Neonderthaw** font (SIL OFL 1.1).
 - **3D base model** created with Meshy, CC BY 4.0, heavily modified in Blender.
 - **Room, reef and early clips** generated with Google Gemini, then cut out and edited.
+- The demo video's second voice is **MOSS-TTS** (Apache 2.0), from a CC0 clip in Kyutai's `tts-voices`.
 
 Full credits: [app/public/licenses/SALTY_NOTICES.txt](app/public/licenses/SALTY_NOTICES.txt).
