@@ -92,7 +92,11 @@ function careNote(words) {
   globalThis.__saltyLastCareNote = { words, note, at: now };
   return note;
 }
-const turnNotes = (words) => [recallNoteFor(memory, words), careNote(words)].filter(Boolean).join(" ") || null;
+// MUSEick, her music studio (museick/museick-room.mjs): while it is open, his newest message also
+// carries a short studio note (what the studio just did with his words), by this same route.
+let studio = null, studioNote = null, studioWords = null;
+const studioNoteOf = (words) => { try { return studioNote?.(words) || null; } catch { return null; } };
+const turnNotes = (words) => [recallNoteFor(memory, words), careNote(words), studioNoteOf(words)].filter(Boolean).join(" ") || null;
 setSaltyMemory(memoryPromptLine(memory), turnNotes);
 
 function remembered() {
@@ -121,7 +125,7 @@ function mount() {
   if (root || !document.body) return;
   let css = document.querySelector("link[data-salty-tank]");
   if (!css) {
-    css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261103-life2`, "data-salty-tank": "" });
+    css = el("link", "", { rel: "stylesheet", href: `${BASE}salty-tank.css?v=20261103-museick1`, "data-salty-tank": "" });
     document.head.append(css);
   }
   root = el("div", "", { id: "saltyTank", role: "application", "aria-label": "Salty's tank" });
@@ -171,6 +175,7 @@ function mount() {
     <a class="st-credit" href="./licenses/SALTY_NOTICES.txt" target="_blank" rel="noopener noreferrer">Built with Llama<span class="st-credit-muse">coded with Muse Wonder</span><span>Salty is an AI · she can be wrong</span></a>
     <button class="st-mem" type="button" aria-label="What Salty remembers about you">🐚 <span class="st-mem-n"></span></button>
     <button class="st-feed" type="button" aria-label="Feed Salty some bloodworms">🪱</button>
+    <button class="st-studio-btn" type="button" aria-label="Open MUSEick, Salty's music studio"><i></i></button>
     <div class="st-toast" aria-live="polite" hidden></div>
     <div class="st-memcard" role="dialog" aria-label="What Salty remembers" hidden>
       <div class="st-memhead"><b>What Salty remembers</b><button class="st-memclose" type="button" aria-label="Close">×</button></div>
@@ -216,6 +221,7 @@ function mount() {
   wireAppState();
   wireMemory();
   wireCare();
+  wireStudio();
   placeLegs();
   // Cold start after a while away: once her mind is awake she says hello first (greetSoon).
   greetSoon(sessionGapMs);
@@ -258,6 +264,7 @@ async function init3D() {
 
 function unmount() {
   if (!root) return;
+  studio?.close();
   state.salty3d?.dispose();
   for (const t of state.timers) clearInterval(t);
   for (const o of state.observers) o.disconnect();
@@ -643,7 +650,7 @@ function greetSoon(gapMs, waitMs = 4 * 60e3) {
   const tryNow = () => {
     greetTimer = 0;
     // He spoke, typed or tapped first, or she's away for a dialog: he's started without her.
-    if (!state || !root || root.dataset.away || root.classList.contains("st-yield") || root.classList.contains("typing")) return;
+    if (!state || !root || root.dataset.away || root.classList.contains("st-yield") || root.classList.contains("typing") || studio) return;
     if (care.lastSeenAt !== seenAt || document.hidden) return;
     if (!mindIdle()) { if (Date.now() - since < waitMs) greetTimer = setTimeout(tryNow, 2000); return; }
     greet(gapMs);
@@ -696,6 +703,49 @@ function wireCare() {
   });
   state.timers.push(setInterval(applyRestFace, 60e3));
   applyRestFace();
+}
+
+// ---------- MUSEick: her music studio ----------
+//
+// The studio is its own module, loaded only when he opens it, so the tank's start-up is unchanged.
+// It borrows her tank (moved into the studio's booth window and put back on the way out), sends his
+// words through the same form send() uses, and adds its note to his message through turnNotes.
+function wireStudio() {
+  const btn = root.querySelector(".st-studio-btn");
+  btn.addEventListener("click", async () => {
+    if (studio || btn.disabled) return;
+    btn.disabled = true;
+    try {
+      const { openMuseick } = await import("./museick/museick-room.mjs");
+      if (!state) return;
+      openTyping(false);
+      root.classList.remove("st-wide");
+      studio = openMuseick({
+        root, tank: state.tank,
+        salty3d: () => state?.salty3d || null,
+        send: (text) => {
+          const input = document.getElementById("textInput");
+          const form = document.getElementById("textForm");
+          if (!input || !form) return false;
+          input.value = text;
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          lastWordsAt = performance.now();
+          form.requestSubmit();
+          return true;
+        },
+        setNote: (fn) => { studioNote = typeof fn === "function" ? fn : null; },
+        onWords: (fn) => { studioWords = typeof fn === "function" ? fn : null; },
+        mic: () => state?.mic.click(),
+        close: () => { studio = null; studioNote = null; studioWords = null; if (state) { placeLegs(); state.salty3d?.setBusy(state.busy); } },
+      });
+      state.salty3d?.setBusy(true);
+    } catch (e) {
+      console.warn("MUSEick did not open", e);
+      toast("The studio couldn't open just now.");
+    } finally {
+      btn.disabled = false;
+    }
+  });
 }
 
 // Bloodworms drift down from the surface to about her mouth, sway a little, and are gone.
@@ -815,7 +865,8 @@ function wireAppState() {
       // froze her life, stuck mid-meal with no worms left. She smiles while it listens; his words landing
       // start a turn, and that brings her home.
       state.busy = thinking || turn || replying || speaking;
-      state.salty3d.setBusy(state.busy || root.classList.contains("typing"));
+      // In the studio she stays in the booth window facing him: no laps round a tank he can't see.
+      state.salty3d.setBusy(state.busy || root.classList.contains("typing") || Boolean(studio));
       // Her reaction to what he just said (salty-moods.mjs): only once a real turn is under way,
       // so a conversation Veridity restores into its log on wake never sets her off.
       const now = performance.now();
@@ -912,6 +963,8 @@ function wireAppState() {
       // Her own greeting cue (she speaks first): her words get captions, nothing else happens.
       if (isGreetingCue(words)) { lastWordsAt = performance.now(); captionYou(""); return; }
       if (words.trim()) { lastWordsAt = performance.now(); captionYou(words); attention(); clearTimeout(greetTimer); }
+      // The studio reads his words too (a brief or a change to the song), typed or spoken.
+      if (words.trim()) { try { studioWords?.(words); } catch (e) { console.warn("MUSEick could not read his words", e); } }
       const mood = saltyMoodFor(words);
       // What he tells her now is kept for next time (salty-memory.mjs; rules on his words only).
       const kept = captureFromWords(memory, words, { mood });

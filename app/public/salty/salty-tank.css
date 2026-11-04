@@ -94,17 +94,12 @@ html:has(#saltyTank:not(.st-yield)) #orbView { visibility: hidden !important; }
 #saltyTank .st-leg { position: absolute; left: 0; top: 0; width: var(--size, 64px); height: var(--size, 64px); margin: 0; padding: 0;
                      border: 0; border-radius: 50%; background: none; color: #fff; cursor: pointer; isolation: isolate;
                      transform: translate(-50%, -50%); transition: opacity .25s, transform .15s; }
-#saltyTank .st-leg::before { content: ""; position: absolute; inset: -3px; border-radius: 50%; z-index: -2;
-                             background: conic-gradient(#ff2d55, #ff9f0a, #ffd60a, #30d158, #64d2ff, #0a84ff, #bf5af2, #ff2d55);
-                             animation: st-spin 3.2s linear infinite; filter: drop-shadow(0 0 8px rgba(255, 80, 200, .65)); }
-#saltyTank .st-leg::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; z-index: -1;
-                            background: radial-gradient(circle at 35% 30%, rgba(70, 60, 90, .92), rgba(12, 10, 20, .94) 70%);
-                            box-shadow: inset 0 0 10px rgba(0, 0, 0, .8); }
-#saltyTank .st-leg span { font: 700 calc(var(--size, 64px) * .25)/1 system-ui, sans-serif; letter-spacing: .04em; text-transform: lowercase;
-                          text-shadow: 0 0 6px #fff, 0 0 12px #ff5fd2; }
+#saltyTank .st-leg::before { content: ""; position: absolute; inset: 0; border-radius: 50%; z-index: -2; border: 1px solid rgba(255, 255, 255, .3); transition: border-color .15s; }
+#saltyTank .st-leg::after { content: ""; position: absolute; inset: 0; border-radius: 50%; z-index: -1; background: rgba(10, 12, 15, .78); }
+#saltyTank .st-leg span { font: 600 calc(var(--size, 64px) * .2)/1 Roboto, "Segoe UI", system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: #edf0f3; }
 #saltyTank .st-leg:active { transform: translate(-50%, -50%) scale(.92); }
-#saltyTank .st-leg.live::before { animation-duration: .9s; filter: drop-shadow(0 0 14px rgba(255, 60, 160, .95)); }
-#saltyTank .st-leg.live span { text-shadow: 0 0 6px #fff, 0 0 14px #ff2d55; }
+#saltyTank .st-leg.live::before { border-color: #f4a93c; }
+#saltyTank .st-leg.live span { color: #f4a93c; }
 #saltyTank .st-leg[disabled] { opacity: .45; }
 #saltyTank.typing .st-leg { opacity: 0; pointer-events: none; }
 /* Built with Llama + AI line (licence and AUP duty): placed by placeLegs(), opens SALTY_NOTICES.txt. */
@@ -132,17 +127,15 @@ html:has(#saltyTank:not(.st-yield)) #orbView { visibility: hidden !important; }
 #saltyTank.typing .st-caps, #saltyTank .st-memcard:not([hidden]) ~ .st-caps { opacity: 0; }
 /* What she remembers (salty-memory.mjs): a shell button, top left, and its card. Outside .st-stage, so not a tap on her. */
 #saltyTank .st-mem { position: absolute; left: 14px; top: calc(env(safe-area-inset-top, 0px) + 14px); z-index: 4;
-                     display: flex; align-items: center; gap: 4px; height: 40px; min-width: 40px; padding: 0 12px; border-radius: 20px;
-                     border: 1px solid rgba(255, 255, 255, .22); background: rgba(18, 12, 30, .42); color: #fff;
-                     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font: 600 18px/1 system-ui, sans-serif; }
+                     display: flex; align-items: center; gap: 4px; height: 40px; min-width: 40px; padding: 0 11px; border-radius: 10px;
+                     border: 1px solid rgba(255, 255, 255, .22); background: rgba(10, 12, 15, .72); color: #edf0f3; font: 600 17px/1 system-ui, sans-serif; }
 #saltyTank .st-mem-n { font-size: 14px; }
 /* Her care loop (salty-care.mjs): the 🪱 button mirrors the 🐚, pulses when she's hungry; worms drift to her mouth. */
 #saltyTank .st-feed { position: absolute; right: 14px; top: calc(env(safe-area-inset-top, 0px) + 14px); z-index: 4;
-                      width: 44px; height: 40px; padding: 0; border-radius: 20px; font: 20px/1 system-ui, sans-serif;
-                      border: 1px solid rgba(255, 255, 255, .22); background: rgba(18, 12, 30, .42); color: #fff;
-                      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
-#saltyTank .st-feed.hungry { border-color: rgba(255, 140, 120, .85); animation: st-hungry 2.4s ease-in-out infinite; }
-@keyframes st-hungry { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 120, 100, 0); } 50% { box-shadow: 0 0 0 6px rgba(255, 120, 100, .28); } }
+                      width: 44px; height: 40px; padding: 0; border-radius: 10px; font: 19px/1 system-ui, sans-serif;
+                      border: 1px solid rgba(255, 255, 255, .22); background: rgba(10, 12, 15, .72); color: #edf0f3; }
+#saltyTank .st-feed.hungry { border-color: #f4a93c; animation: st-hungry 2.4s ease-in-out infinite; }
+@keyframes st-hungry { 0%, 100% { box-shadow: 0 0 0 0 rgba(244, 169, 60, 0); } 50% { box-shadow: 0 0 0 4px rgba(244, 169, 60, .25); } }
 #saltyTank.typing .st-feed { opacity: 0; pointer-events: none; }
 #saltyTank .st-worm { position: absolute; top: -4%; left: var(--x, 50%); z-index: 3; font-size: 24px; pointer-events: none;
                       filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .45)); animation: st-worm 2.1s cubic-bezier(.35, .1, .55, 1) both; }
@@ -238,3 +231,9 @@ html:has(#saltyTank:not(.st-yield)) #orbView { visibility: hidden !important; }
   #saltyTank .st-leg::before, #saltyTank .st-panel { animation-duration: 20s; }
   #saltyTank .st-bubble { animation: none; opacity: 0; }
 }
+/* MUSEick, her music studio (museick/museick-room.mjs): the door, top centre between the 🐚 and the 🪱. */
+#saltyTank .st-studio-btn { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 14px); z-index: 4; transform: translateX(-50%);
+  height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .22); background: rgba(10, 12, 15, .72); display: flex; align-items: center; }
+#saltyTank .st-studio-btn i { display: block; width: 98px; height: 19.4px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -.6 127.5 25.2'%3E%3Cdefs%3E%3ClinearGradient id='g' gradientUnits='userSpaceOnUse' x1='0' y1='0' x2='0' y2='24'%3E%3Cstop offset='0' stop-color='%23fff'/%3E%3Cstop offset='1' stop-color='%23b9c1c9'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='none' stroke='url(%23g)' stroke-width='3' stroke-miterlimit='3'%3E%3Cpath d='M1.5 24V1.4L13.5 17.6 25.5 1.4V24'/%3E%3Cpath transform='translate(30.5)' d='M1.5 0V14.4a8.6 8.6 0 0 0 17.2 0V0'/%3E%3Cpath transform='translate(54)' d='M15.2 5.9C14.2 3 11.6 1.5 8.2 1.5 4.4 1.5 1.8 3.6 1.8 6.6 1.8 9.8 4.2 11 8 12 11.8 13 14.6 14.2 14.6 17.4 14.6 20.6 11.8 22.5 7.9 22.5 4.3 22.5 1.7 20.9 .8 18.1'/%3E%3Cpath transform='translate(74.5)' d='M14.6 1.5H1.5V22.5H14.6M1.5 12H12.8'/%3E%3Cpath transform='translate(94)' d='M1.5 8.6V24'/%3E%3Cpath transform='translate(99.5)' d='M12.7 12.1A6.5 6.5 0 1 0 12.7 19.9'/%3E%3Cpath transform='translate(114)' d='M1.5 0V24M12 8.6 3 16.4M5.8 14 12.9 24'/%3E%3C/g%3E%3Ccircle cx='95.5' cy='3' r='2.3' fill='%23f4a93c'/%3E%3C/svg%3E") center / contain no-repeat; }
+#saltyTank.typing .st-studio-btn { opacity: 0; pointer-events: none; }
