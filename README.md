@@ -6,22 +6,22 @@ Built with Llama. Built for the Meta Global AI Developer Hackathon (Indie track)
 
 Salty is a fine-tuned **Llama 3.2 3B Instruct** (`Llama-3.2-3B-Salty-v7a`) running on the **Hexagon NPU** of an ASUS ROG Phone 8 Pro (Snapdragon 8 Gen 3) through llama.cpp's ggml Hexagon backend. She hears you, thinks, talks back in her own voice, reacts with her whole body to what you tell her, and remembers you the next time she wakes up, all in a 3D tank where she swims laps and snaps up the bloodworms you drop her. No server, no account, no cloud: nothing you say to her leaves the phone.
 
-She was built with **Muse Code on Muse Wonder 1.0** through the Meta Model API (2,311 calls during the hackathon; see [docs/MUSE_CODE_EVIDENCE.md](docs/MUSE_CODE_EVIDENCE.md)).
+**Muse Code on Muse Wonder 1.0** got her onto the NPU and wrote her 3D tank renderer (2,311 calls after kickoff, paid through a Muse subscription and then Meta Model API credits; see [docs/MUSE_CODE_EVIDENCE.md](docs/MUSE_CODE_EVIDENCE.md)). **Claude Code** also did a large share of the work: most of her training chats, her fine-tune runs, her Blender rig, the features added from 2 Nov on, and the MUSEick studio.
 
 ## Meta models used
 
 | Model | How |
 |---|---|
-| **Muse Wonder 1.0** (Meta Model API, via Muse Code) | The coding agent that planned, researched and built much of Salty during the hackathon |
+| **Muse Wonder 1.0** (Meta Model API, via Muse Code) | The coding agent that researched and planned the project, got her onto the NPU, wrote the JNI bridge and her 3D tank renderer, and worked on her reply speed and conversation layer |
 | **Llama 3.2 3B Instruct** (Meta open weights) | Her mind: LoRA fine-tuned for her personality, quantised to Q6_K GGUF, run on the phone's NPU |
 
 ## What was built during the hackathon
 
-Everything in this repository. Salty lives inside **Veridity Flow**, an existing private Android companion app by the same author; Veridity itself is not included and was not built for this event. Salty is a separate lane of it (package `com.veridity.flow.local.meta`) that only appears when her mind is loaded. The default app and its own model are untouched.
+Everything in this repository, apart from what the timeline note below says came before kickoff. Salty lives inside **Veridity Flow**, an existing private Android companion app by the same author; Veridity itself is not included and was not built for this event. Salty is a separate lane of it (package `com.veridity.flow.local.meta`) that only appears when her mind is loaded. The default app and its own model are untouched.
 
 New for the hackathon:
 
-- **Her personality fine-tune:** a style spec, a held-out eval of 65 prompts plus identity and looks probes, with automatic metrics and blind scoring, LoRA training runs v1–v7b, and the v7a pick. ([experiments/salty](experiments/salty))
+- **Her personality fine-tune:** a style spec, a held-out eval of 65 prompts plus identity and looks probes, with automatic metrics and blind scoring, LoRA training runs v1–v7b, and the v7a pick, trained on 28 Oct. Some of this came before kickoff: see the timeline note. ([experiments/salty](experiments/salty))
 - **Her mind on the NPU:** a JNI bridge from the app's engine interface to llama.cpp's ggml Hexagon backend, with streaming tokens, ~1 ms conversation rewind (sequence checkpoints), exact cache accounting and a 4096-token context on a DSP mapping budget. Measured on the phone: 871 tok/s prefill and 20 tok/s decode at Q4_0 in a bench; 9 tok/s decode in the app at the Q6_K quality pick. ([app/android/app/native-hex](app/android/app/native-hex), [experiments/salty/npu](experiments/salty/npu))
 - **Her conversation layer:** prompt assembly, a sliding history window that keeps prefill reuse high, background-job deferral, a deterministic helper so she never does sums in her head (`saltyFacts`), and a helpline guard that removes invented emergency numbers. ([app/public/salty-mind.mjs](app/public/salty-mind.mjs), [app/public/helpline-guard.mjs](app/public/helpline-guard.mjs))
 - **She remembers you:** short notes kept only on the phone, taken from *your* words by plain rules (your dog's name, your partner, where you live, what you love, and your own sentence from moments that moved her), never written by her model. They join her prompt once per session, so her engine's persona checkpoint holds, and when you ask about something personal the page tells her what she does or doesn't know, so she says "you haven't told me" instead of inventing (before that fix she named a cat that didn't exist "Muffin"). A 🐚 card shows every note, with forget-one and forget-everything. Tested across a cold restart on the phone. ([app/public/salty-memory.mjs](app/public/salty-memory.mjs))
@@ -35,7 +35,7 @@ New for the hackathon:
 - **Her body:** a Blender pipeline from a Meshy base mesh to feathery gills, skin, eyelids, lashes, mouth and teeth, a 23-bone rig and her animations. ([salty-rig](salty-rig))
 - **Her voice:** Pocket TTS shaped to a brighter, quicker cartoon voice (pitch ×1.14).
 
-Timeline note: the style spec, eval rubric and held-out prompts were drafted on the evening of 26 Oct Adelaide time, a few hours before the kickoff stream (12:00 PM ET, 26 Oct). Training, the NPU bridge, the app integration, the tank and her 3D body were all built after kickoff.
+Timeline note: some of this was prepared before kickoff, mostly in the hours just before the stream (12:00 PM ET on 26 Oct, which is 02:30 on 27 Oct in Adelaide): planning and research, testing stock Llama, her style spec, eval rubric and held-out prompts, 402 of the 513 chats v7a was trained on, and four early test fine-tunes (v1 to v4), none of which ship. Her chosen fine-tune (v7a, trained on 28 Oct), the other 111 chats, the NPU bridge, the app integration, the tank and her 3D body were all built after kickoff.
 
 ## Repository map
 
@@ -64,7 +64,7 @@ node --test scripts/salty_memory_test.mjs scripts/salty_moods_test.mjs scripts/s
 
 - **Veridity Flow itself** (the host app, its native voice and engine code, build files): private, pre-existing.
 - **Model weights** (`.gguf`, safetensors): too large for git. Hashes are in [docs/ASSETS.md](docs/ASSETS.md).
-- **Most of her training chats:** 524 chats trained v7a. 49 are the author's own: they are included, with one more he rejected, in [experiments/salty/data/candidates](experiments/salty/data/candidates). The other 475 were written with an AI assistant and are kept private. [experiments/salty/PROVENANCE.md](experiments/salty/PROVENANCE.md) records the sources.
+- **Most of her training chats:** 513 chats trained v7a. 49 are the author's own: they are included, with one more he rejected, in [experiments/salty/data/candidates](experiments/salty/data/candidates). The other 464 were written by Claude Code, with the author's approval, and are kept private. [experiments/salty/PROVENANCE.md](experiments/salty/PROVENANCE.md) records the sources.
 - **Blender source files** (`.blend`, ~150 MB) and third-party runtime binaries (LiteRT, Qualcomm).
 - Device serials and network addresses in scripts are replaced with `YOUR_DEVICE_SERIAL` / `PHONE_IP`.
 
